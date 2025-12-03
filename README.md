@@ -17,14 +17,16 @@ gix <gist-name> [gist-args...]
 
 ## Quick start
 
-### Donwload the latest release from the [GitHub releases page](https://github.com/leonardolaurindo/gix-cli/releases)
-
 ### Prerequisites
 
 - Go 1.21+
 - GitHub CLI `gh` installed and authenticated (`gh auth status` passes).
 
-### Build
+### Option 1: Download prebuilt binary
+
+- Go to the [releases page](https://github.com/leolaurindo/gix-cli/releases) and download the appropriate binary for your OS.
+
+### Option 2: Build
 
 ```sh
 go build -o bin/gix ./cmd/gix
@@ -76,11 +78,12 @@ For one-off runs without indexing, `--user-lookup/-u` resolves `owner/name` live
 
 Running code from untrusted sources can be dangerous. Use the [trust model](docs/trust-and-security.md) to manage which gists you trust to run without prompts. When in doubt, inspect the code first with `--view` or `--dry-run`.
 
-## More docs
+## Check the docs
 
 - [CLI usage and resolution details](docs/cli-usage.md)
 - [Caching and index locations/modes](docs/caching-and-index.md)
 - [Trust model and safety options](docs/trust-and-security.md)
+
 
 ## Uninstall
 
