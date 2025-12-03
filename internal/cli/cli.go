@@ -100,6 +100,17 @@ func newApp() *ucli.App {
 				},
 			},
 			{
+				Name:      "describe",
+				Usage:     "show description for a gist",
+				ArgsUsage: "<gist-id|url|alias|name|owner/name>",
+				Action: func(c *ucli.Context) error {
+					if c.Args().Len() == 0 {
+						return errors.New("usage: gix describe <gist-id|url|alias|name|owner/name>")
+					}
+					return handleDescribe(c.Context, c.Args().First())
+				},
+			},
+			{
 				Name:  "config-trust",
 				Usage: "configure trust policy",
 				Flags: []ucli.Flag{

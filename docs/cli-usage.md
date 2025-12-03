@@ -15,6 +15,7 @@ gix [run flags] <gist-id|url|alias|name|owner/name> [-- <args to gist>]
 
 - Flags before the target configure gix itself (resolution, caching, manifests, execution, trust, timeouts).
 - After the literal `--`, every argument is forwarded to the gist unchanged.
+  - If the argument does not look like a flag and comes after the target, gix treats it as a gist argument automatically (no need for `--`).
 - Relative forwarded args are resolved against your original shell CWD so they still point at the same files when you run in an isolated workdir.
 
 ## Identifier resolution
@@ -82,6 +83,7 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gix config-trust [flags]`: manage trust mode, trusted owners, and stored gist trust.
 - `gix config-cache --mode cache|never [--show]`: set or display cache mode.
 - `gix config-exec --mode isolate|cwd [--show]`: set or display execution directory mode.
+- `gix describe <gist-id|url|alias|name|owner/name>`: show description (prefers index/cache, otherwise fetches).
 
 ## Common errors
 
