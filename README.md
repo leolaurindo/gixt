@@ -61,7 +61,7 @@ This installs to your Go `GOBIN`/`GOPATH/bin`; ensure that directory is on your 
 
 - If installed with `go install`, update by re-running `go install github.com/leolaurindo/gix/cmd/gix@latest`.
 - If using a prebuilt binary, download the latest release and replace the existing `gix` on your `PATH`.
-- To check whether a newer release exists (and get copy/paste commands to download/replace), run `gix check-updates`.
+- ✨ To check whether a newer release exists (and get copy/paste commands to download/replace), run `gix check-updates`.
 
 
 ### First runs
