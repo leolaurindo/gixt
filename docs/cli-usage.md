@@ -64,6 +64,12 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 10. Command resolution (in order): manifest (`gix.json` or `--manifest <name>`) with `run` (string, executed via shell) + optional `env`; shebang on the chosen file; extension map (.sh -> sh, .ps1 -> powershell, .bat/.cmd -> cmd /C on Windows, .py -> python, .js -> node, .ts -> npx ts-node, .go -> go run, .rb -> ruby, .pl -> perl, .php -> php). Entrypoint preference: `main.*` then `index.*` then the first file (sorted).
 11. Execution: runs the resolved command in the exec dir with any extra env from the manifest. `--timeout` cancels long runs.
 
+## Execution directory modes
+
+- Default is **isolate**: the gist files live in a temp/cache dir and execution also happens there (safer for untrusted code).
+- Per-run override: `--cwd` (alias `--here`) executes in your current shell directory; `--isolate` forces the temp/cache dir even if you changed the default.
+- Change the default: `gix config-exec --mode cwd` to prefer running in your current directory (use `--isolate` when you want safety for a specific run).
+
 ## Run flags (high level)
 
 - Resolution: `--ref <sha>`, `--user-lookup/-u`, `--user-pages/-p <n>`, `--desc-lookup`

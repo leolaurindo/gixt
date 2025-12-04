@@ -106,6 +106,16 @@ gix register <gist-id>
 gix owner/gist --user-lookup
 ```
 
+### Run in your current directory
+
+By default gix executes gists in an isolated temp/cache directory for safety. To run a gist in the directory you invoked gix from, add `--here` (alias `--cwd`):
+
+```sh
+gix --here ghinit -m "chore: initial commit"
+```
+
+If you prefer this behavior by default, set `gix config-exec --mode cwd` and use `--isolate` on runs where you want the safer temp directory.
+
 
 ## Using names instead of IDs
 
