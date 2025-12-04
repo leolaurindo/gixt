@@ -1,6 +1,7 @@
 bin/
 notes/
 compile.bat
+compile_with_version.bat
 compile.sh
 .vscode/
 
