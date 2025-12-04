@@ -57,8 +57,13 @@ func handleCheckUpdates(ctx context.Context, outputJSON bool) error {
 		}
 		return err
 	}
-	latest := trimVersion(rel.TagName)
-	res.LatestVersion = latest
+	latestRaw := strings.TrimSpace(rel.TagName)
+	latest := trimVersion(latestRaw)
+	displayLatest := latestRaw
+	if !strings.HasPrefix(displayLatest, "v") && latest != "" {
+		displayLatest = "v" + latest
+	}
+	res.LatestVersion = displayLatest
 	res.ReleaseURL = rel.HTMLURL
 	res.UpdateAvailable = current == "dev" || compareVersions(latest, current) > 0
 
@@ -94,7 +99,7 @@ func handleCheckUpdates(ctx context.Context, outputJSON bool) error {
 	if res.DownloadURL != "" {
 		fmt.Printf("direct download: %s (%s)\n", res.DownloadURL, res.AssetName)
 	}
-	fmt.Println("Suggested commands (copy/paste):")
+	fmt.Println("Run these suggested commands in sequence (you may need elevated permissions):")
 	for _, cmd := range res.SuggestedCommands {
 		fmt.Printf("  %s\n", cmd)
 	}
