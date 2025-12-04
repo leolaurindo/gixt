@@ -95,7 +95,7 @@ gix owner/gist --user-lookup
 
 To run gists by friendly names, `gix` uses an index stored in your config directory. Index is just a local mapping of names to gist IDs.
 
-Populate it with `gix index-mine` (your gists) or `gix index-owner <owner>` (another user). Then run gists by name:
+Populate it with `gix index-mine` (syncs all your gists, adding new ones and removing deleted) or `gix index-owner <owner>` (another user). Then run gists by name:
 
 - Use the file basename as the identifier (`hello-world` for `hello-world.py`).
 - Use `owner/name` to disambiguate when multiple owners have the same name.

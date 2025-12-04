@@ -75,7 +75,7 @@ func newApp() *ucli.App {
 				Name:  "index-mine",
 				Usage: "refresh friendly-name index for your user",
 				Action: func(c *ucli.Context) error {
-					return handleUpdateIndex(c.Context)
+					return handleIndexMine(c.Context)
 				},
 			},
 			{

@@ -34,48 +34,108 @@ func handleUpdateIndex(ctx context.Context) error {
 		return err
 	}
 
-	// If we have existing entries, refresh each individually to avoid pulling full owner lists.
-	// If the index is empty, do nothing (no implicit fetch of your gists).
 	current, err := index.Load(paths.IndexFile)
 	if err != nil {
 		return err
 	}
-	var entries []index.Entry
-	if len(current.Entries) == 0 {
-		fmt.Println("index is empty; nothing to refresh (add entries via index-mine, index-owner, or register).")
-	} else {
-		fmt.Println("refreshing indexed gists individually via gh...")
-		for _, ent := range current.Entries {
-			fmt.Printf("  %s\n", ent.ID)
-			g, err := gist.Fetch(ctx, ent.ID, "")
-			if err != nil {
-				return err
-			}
-			entries = append(entries, toIndexEntryFromGist(g))
-		}
-		// dedupe in case of duplicates
-		uniq := map[string]index.Entry{}
-		for _, e := range entries {
-			uniq[e.ID] = e
-		}
-		entries = entries[:0]
-		for _, e := range uniq {
-			entries = append(entries, e)
-		}
-		sort.Slice(entries, func(i, j int) bool {
-			if entries[i].Owner == entries[j].Owner {
-				return entries[i].Description < entries[j].Description
-			}
-			return entries[i].Owner < entries[j].Owner
-		})
+	entries, removed, err := refreshIndexedGists(ctx, current.Entries)
+	if err != nil {
+		return err
 	}
 
 	idx := index.Index{GeneratedAt: time.Now(), Entries: entries}
 	if err := index.Save(paths.IndexFile, idx); err != nil {
 		return err
 	}
+	if removed > 0 {
+		fmt.Printf("%sremoved %d missing gists from index%s\n", clrWarn, removed, clrReset)
+	}
 	fmt.Printf("%sstored %d gists in index %s%s\n", clrInfo, len(idx.Entries), paths.IndexFile, clrReset)
 	return nil
+}
+
+func handleIndexMine(ctx context.Context) error {
+	paths, err := ensurePaths("")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("fetching your gists via gh...")
+	mine, err := gist.List(ctx, 100, 5)
+	if err != nil {
+		return err
+	}
+	freshEntries := entriesFromList(mine)
+	ownerSet := map[string]bool{}
+	for _, e := range freshEntries {
+		ownerKey := strings.ToLower(strings.TrimSpace(e.Owner))
+		if ownerKey != "" {
+			ownerSet[ownerKey] = true
+		}
+	}
+
+	idx, err := index.Load(paths.IndexFile)
+	if err != nil {
+		return err
+	}
+	merged := map[string]index.Entry{}
+	for _, e := range idx.Entries {
+		if ownerSet[strings.ToLower(strings.TrimSpace(e.Owner))] {
+			continue
+		}
+		merged[e.ID] = e
+	}
+	for _, e := range freshEntries {
+		merged[e.ID] = e
+	}
+
+	entries := make([]index.Entry, 0, len(merged))
+	for _, e := range merged {
+		entries = append(entries, e)
+	}
+	sortIndexEntries(entries)
+
+	out := index.Index{GeneratedAt: time.Now(), Entries: entries}
+	if err := index.Save(paths.IndexFile, out); err != nil {
+		return err
+	}
+	fmt.Printf("%sstored %d gists in index %s%s\n", clrInfo, len(out.Entries), paths.IndexFile, clrReset)
+	return nil
+}
+
+func refreshIndexedGists(ctx context.Context, entries []index.Entry) ([]index.Entry, int, error) {
+	if len(entries) == 0 {
+		fmt.Println("index is empty; nothing to refresh (add entries via index-mine, index-owner, or register).")
+		return nil, 0, nil
+	}
+
+	fmt.Println("refreshing indexed gists individually via gh...")
+	var refreshed []index.Entry
+	missing := 0
+	for _, ent := range entries {
+		fmt.Printf("  %s\n", ent.ID)
+		g, err := gist.Fetch(ctx, ent.ID, "")
+		if err != nil {
+			if gist.IsNotFound(err) {
+				fmt.Printf("%sskip missing gist %s (removed from index)%s\n", clrWarn, ent.ID, clrReset)
+				missing++
+				continue
+			}
+			return nil, missing, err
+		}
+		refreshed = append(refreshed, toIndexEntryFromGist(g))
+	}
+	// dedupe in case of duplicates
+	uniq := map[string]index.Entry{}
+	for _, e := range refreshed {
+		uniq[e.ID] = e
+	}
+	deduped := make([]index.Entry, 0, len(uniq))
+	for _, e := range uniq {
+		deduped = append(deduped, e)
+	}
+	sortIndexEntries(deduped)
+	return deduped, missing, nil
 }
 
 func handleCleanCache(cacheDir string) error {
@@ -358,4 +418,13 @@ func toIndexEntryFromGist(g gist.Gist) index.Entry {
 		UpdatedAt:   g.UpdatedAt,
 		Owner:       strings.TrimSpace(gist.GuessOwner(g)),
 	}
+}
+
+func sortIndexEntries(entries []index.Entry) {
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].Owner == entries[j].Owner {
+			return entries[i].Description < entries[j].Description
+		}
+		return entries[i].Owner < entries[j].Owner
+	})
 }

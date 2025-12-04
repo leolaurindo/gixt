@@ -75,7 +75,8 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 
 - `gix alias add <name> <gist-id>` | `list` | `remove <name>`: manage aliases.
 - `gix list [--cache|-c] [--mine]`: show cached + indexed gists (columns: ID, Source, Owner, Files, Aliases, Description). `--cache` limits to cached; `--mine` filters to gists owned by your `gh` user.
-- `gix update-index` / `gix index-mine`: refresh existing index entries individually. If the index is empty, nothing is fetched; use `index-owner` to add entries first.
+- `gix index-mine`: fetch or re-sync all gists for your authenticated user (adds new ones, drops deleted gists).
+- `gix update-index`: refresh existing index entries individually via `gh`, skipping missing gists (404) and pruning them from the index.
 - `gix index-owner <owner>`: add all gists for an owner (up to 5 pages of 100) to the index.
 - `gix clear-index [--cache-dir <path>]`: delete the index file only.
 - `gix clean-cache [--cache-dir <path>]`: delete the cache directory.

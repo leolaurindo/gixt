@@ -206,4 +206,13 @@ func IsLikelyGistID(id string) bool {
 	return true
 }
 
+// IsNotFound reports whether the error from gh indicates a 404.
+func IsNotFound(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "http 404") || strings.Contains(msg, " 404 ") || strings.Contains(msg, "not found")
+}
+
 var ErrAmbiguous = errors.New("multiple matching gists")

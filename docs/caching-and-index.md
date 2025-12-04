@@ -32,7 +32,8 @@ g
 - Matching rules: filename basenames (case-insensitive, extension stripped); add `--desc-lookup` to also match exact descriptions.
 - Commands:
   - `gix index-owner <owner>`: add all gists for an owner (up to 5 pages of 100) to the index.
-  - `gix update-index` / `gix index-mine`: refresh existing index entries one-by-one via `gh`. If the index is empty, nothing is fetched; populate it first with `index-owner`.
+  - `gix index-mine`: fetch or re-sync all gists for your authenticated user (adds new ones, drops deleted gists).
+  - `gix update-index`: refresh existing index entries one-by-one via `gh`, skipping/pruning gists that return 404.
   - `gix clear-index [--cache-dir <path>]`: delete only the index file.
 
 ## Listing
