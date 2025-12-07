@@ -11,21 +11,32 @@ import (
 )
 
 type RunManifest struct {
-	Run string            `json:"run"`
-	Env map[string]string `json:"env"`
+	Run     string            `json:"run"`
+	Env     map[string]string `json:"env"`
+	Details string            `json:"details,omitempty"`
+	Version string            `json:"version,omitempty"`
 }
+
+const DefaultDetails = "No description provided"
 
 func LoadRunManifest(path string) (RunManifest, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		return RunManifest{}, err
 	}
+	return LoadRunManifestBytes(data)
+}
+
+func LoadRunManifestBytes(data []byte) (RunManifest, error) {
 	var m RunManifest
 	if err := json.Unmarshal(data, &m); err != nil {
 		return RunManifest{}, fmt.Errorf("parse run manifest: %w", err)
 	}
 	if m.Env == nil {
 		m.Env = map[string]string{}
+	}
+	if strings.TrimSpace(m.Details) == "" {
+		m.Details = DefaultDetails
 	}
 	return m, nil
 }

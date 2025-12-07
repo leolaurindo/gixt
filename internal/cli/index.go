@@ -16,6 +16,7 @@ import (
 	"github.com/leolaurindo/gix/internal/config"
 	"github.com/leolaurindo/gix/internal/gist"
 	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gix/internal/indexdesc"
 )
 
 type listRow struct {
@@ -246,9 +247,13 @@ func handleIndexOwner(ctx context.Context, owner string) error {
 
 func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRow, error) {
 	rows := map[string]listRow{}
+	overrides, _ := indexdesc.Load(paths.IndexDescFile)
 
 	idx, _ := index.Load(paths.IndexFile)
 	for _, e := range idx.Entries {
+		if v, ok := overrides[e.ID]; ok {
+			e.Description = indexdesc.Normalize(v)
+		}
 		rows[e.ID] = listRow{
 			ID:          e.ID,
 			Owner:       e.Owner,
@@ -295,6 +300,9 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 		}
 		existing, ok := rows[gistID]
 		if !ok || !existing.Cached {
+			if v, ok := overrides[gistID]; ok {
+				latest.Description = indexdesc.Normalize(v)
+			}
 			rows[gistID] = listRow{
 				ID:          latest.GistID,
 				Owner:       latest.Owner,
@@ -312,6 +320,9 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 			}
 			if latest.Description != "" {
 				existing.Description = strings.TrimSpace(latest.Description)
+			}
+			if v, ok := overrides[gistID]; ok {
+				existing.Description = indexdesc.Normalize(v)
 			}
 			if latest.Owner != "" {
 				existing.Owner = latest.Owner

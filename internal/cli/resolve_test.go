@@ -2,6 +2,7 @@ package cli
 
 import (
 	"context"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -33,7 +34,7 @@ func TestResolveIdentifierPrefersAliasThenID(t *testing.T) {
 func TestResolveIdentifierUsesIndexAndHandlesAmbiguity(t *testing.T) {
 	tmp := t.TempDir()
 	idxPath := filepath.Join(tmp, "index.json")
-	paths := config.Paths{IndexFile: idxPath}
+	paths := config.Paths{IndexFile: idxPath, IndexDescFile: filepath.Join(tmp, "index_descriptions.json")}
 
 	idx := index.Index{
 		Entries: []index.Entry{
@@ -65,5 +66,32 @@ func TestResolveIdentifierUsesIndexAndHandlesAmbiguity(t *testing.T) {
 	// Unknown input should error.
 	if _, _, _, err := resolveIdentifier(context.Background(), "missing", nil, paths, false, false, 1); err == nil {
 		t.Fatalf("expected error for missing identifier")
+	}
+}
+
+func TestResolveIdentifierUsesDescriptionOverride(t *testing.T) {
+	tmp := t.TempDir()
+	idxPath := filepath.Join(tmp, "index.json")
+	overridePath := filepath.Join(tmp, "index_descriptions.json")
+	paths := config.Paths{IndexFile: idxPath, IndexDescFile: overridePath}
+
+	idx := index.Index{
+		Entries: []index.Entry{
+			{ID: "id1", Owner: "alice", Filenames: []string{"main.py"}, Description: "old"},
+		},
+	}
+	if err := index.Save(idxPath, idx); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+	if err := os.WriteFile(overridePath, []byte(`{"id1":"new desc"}`), 0o644); err != nil {
+		t.Fatalf("write overrides: %v", err)
+	}
+
+	id, owner, fromIndex, err := resolveIdentifier(context.Background(), "new desc", nil, paths, false, true, 1)
+	if err != nil {
+		t.Fatalf("resolution error: %v", err)
+	}
+	if !fromIndex || id != "id1" || owner != "alice" {
+		t.Fatalf("unexpected resolution: id=%s owner=%s fromIndex=%v", id, owner, fromIndex)
 	}
 }

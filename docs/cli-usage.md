@@ -92,11 +92,15 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gix config-cache --mode cache|never [--show]`: set or display cache mode.
 - `gix config-exec --mode isolate|cwd [--show]`: set or display execution directory mode.
 - `gix describe <gist-id|url|alias|name|owner/name>`: show description (prefers index/cache, otherwise fetches).
+- `gix manifest --create|--edit [--name <file>] [--run ... --env KEY=VAL --details ... --version ...] [--force]`: scaffold or update a manifest locally (defaults to `gix.json`).
+- `gix manifest --create|--edit --upload --gist <id|name>`: build the manifest in-memory and upload directly to a user-owned gist (no local write). `--edit --upload` will fetch the existing manifest from the gist when there is no local file. Indexed name or owner/name is allowed; cache/index refresh after upload.
+- `gix manifest --upload --gist <id|name>`: upload an existing local manifest file (no create/edit), refreshing cache/index on success.
+- `gix index-description add <id|name> <desc> | remove <id|name> | list`: manage local-only description overrides used by `describe`/`list` and resolution with `--desc-lookup`.
 - `gix check-updates [--json]`: compare the current binary against the latest GitHub release and print copy/paste download/replace commands for your platform (does not self update, but includes platform-specific instructions for easy copy/paste).
 
 ## Manifest example
 
-See `docs/manifest-example.md` for a sample `gix.json` that pins the command and env for a gist.
+See `docs/manifest-guide.md` for manifest schema, workflows, and examples.
 
 ## Common errors
 

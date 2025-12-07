@@ -21,7 +21,8 @@ gix <gist-name> [gist-args...]
 - Control where code executes: isolated work directory or your current directory.
 - Configure a trust policy and prompts before executing untrusted code.
 - Inspect what will run with `--view` and `--dry-run`.
-- Implicit resolver for commands: [manifest](docs/manifest-example.md), shebang, or extension map.
+- Implicit resolver for commands: [manifest](docs/manifest-guide.md), shebang, or extension map.
+- `gix manifest` scaffolds/edits/uploads `gix.json` (with details/version/docstring) and keeps cache/index in sync.
 - Anything after -- is passed verbatim to the gist (needed when gist args start with -/--).
 - Relative paths are rebased to your original shell CWD so they still point to the same files if gix runs in an isolated workdir.
 
@@ -142,7 +143,7 @@ Running code from untrusted sources can be dangerous. Use the [trust model](docs
 - [CLI usage and resolution details](docs/cli-usage.md)
 - [Caching and index locations/modes](docs/caching-and-index.md)
 - [Trust model and safety options](docs/trust-and-security.md)
-- [Manifest example](docs/manifest-example.md)
+- [Manifest guide](docs/manifest-guide.md)
 
 
 ## Uninstall

@@ -8,11 +8,12 @@ import (
 )
 
 type Paths struct {
-	ConfigDir string
-	CacheDir  string
-	AliasFile string
-	IndexFile string
-	Settings  string
+	ConfigDir     string
+	CacheDir      string
+	AliasFile     string
+	IndexFile     string
+	Settings      string
+	IndexDescFile string
 }
 
 func Discover(cacheOverride string) (Paths, error) {
@@ -36,11 +37,12 @@ func Discover(cacheOverride string) (Paths, error) {
 	}
 
 	return Paths{
-		ConfigDir: cfgDir,
-		CacheDir:  cacheDir,
-		AliasFile: filepath.Join(cfgDir, "aliases.json"),
-		IndexFile: filepath.Join(cfgDir, "index.json"),
-		Settings:  filepath.Join(cfgDir, "settings.json"),
+		ConfigDir:     cfgDir,
+		CacheDir:      cacheDir,
+		AliasFile:     filepath.Join(cfgDir, "aliases.json"),
+		IndexFile:     filepath.Join(cfgDir, "index.json"),
+		Settings:      filepath.Join(cfgDir, "settings.json"),
+		IndexDescFile: filepath.Join(cfgDir, "index_descriptions.json"),
 	}, nil
 }
 

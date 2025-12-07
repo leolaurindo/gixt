@@ -10,6 +10,7 @@ import (
 	"github.com/leolaurindo/gix/internal/config"
 	"github.com/leolaurindo/gix/internal/gist"
 	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gix/internal/indexdesc"
 )
 
 func resolveIdentifier(ctx context.Context, input string, aliases map[string]string, paths config.Paths, userLookup bool, descLookup bool, userPages int) (string, string, bool, error) {
@@ -23,6 +24,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 	}
 
 	idx, err := index.Load(paths.IndexFile)
+	overrides, _ := indexdesc.Load(paths.IndexDescFile)
 	if err == nil && len(idx.Entries) > 0 {
 		if strings.Contains(input, "/") && !strings.Contains(input, "://") {
 			parts := strings.SplitN(input, "/", 2)
@@ -30,6 +32,9 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 			namePart := strings.ToLower(parts[1])
 			var matches []index.Entry
 			for _, e := range idx.Entries {
+				if v, ok := overrides[e.ID]; ok {
+					e.Description = indexdesc.Normalize(v)
+				}
 				if !strings.EqualFold(e.Owner, ownerPart) {
 					continue
 				}
@@ -53,6 +58,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 			}
 		}
 
+		idx = applyDescriptionOverrides(idx, overrides)
 		matches := index.LookupName(idx, input)
 		if descLookup {
 			matches = append(matches, index.LookupDescription(idx, input)...)
@@ -144,4 +150,21 @@ func normalizeUserPages(val int) int {
 		return 2
 	}
 	return val
+}
+
+func applyDescriptionOverrides(idx index.Index, overrides map[string]string) index.Index {
+	if len(overrides) == 0 {
+		return idx
+	}
+	out := index.Index{
+		GeneratedAt: idx.GeneratedAt,
+		Entries:     make([]index.Entry, 0, len(idx.Entries)),
+	}
+	for _, e := range idx.Entries {
+		if v, ok := overrides[e.ID]; ok {
+			e.Description = indexdesc.Normalize(v)
+		}
+		out.Entries = append(out.Entries, e)
+	}
+	return out
 }

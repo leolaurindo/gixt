@@ -214,6 +214,49 @@ func newApp() *ucli.App {
 					return handleCheckUpdates(c.Context, c.Bool("json"))
 				},
 			},
+			{
+				Name:      "manifest",
+				Usage:     "create, edit, or upload gix manifest files",
+				ArgsUsage: "",
+				Flags: []ucli.Flag{
+					&ucli.StringFlag{Name: "name", Usage: "manifest filename", Value: "gix.json"},
+					&ucli.BoolFlag{Name: "create", Usage: "create a new manifest locally"},
+					&ucli.BoolFlag{Name: "edit", Usage: "edit/overwrite an existing manifest"},
+					&ucli.BoolFlag{Name: "upload", Usage: "upload the manifest to a user-owned gist"},
+					&ucli.StringFlag{Name: "gist", Usage: "gist id or indexed name to upload to"},
+					&ucli.StringFlag{Name: "run", Usage: "run command"},
+					&ucli.StringSliceFlag{Name: "env", Usage: "env entries (KEY=VAL)", Value: ucli.NewStringSlice()},
+					&ucli.StringFlag{Name: "details", Usage: "manifest details/docstring"},
+					&ucli.StringFlag{Name: "version", Usage: "manifest version"},
+					&ucli.BoolFlag{Name: "force", Usage: "skip overwrite confirmation"},
+				},
+				Action: func(c *ucli.Context) error {
+					opts := manifestOpts{
+						name:    c.String("name"),
+						create:  c.Bool("create"),
+						edit:    c.Bool("edit"),
+						upload:  c.Bool("upload"),
+						gist:    c.String("gist"),
+						run:     c.String("run"),
+						env:     c.StringSlice("env"),
+						details: c.String("details"),
+						version: c.String("version"),
+						force:   c.Bool("force"),
+					}
+					if err := applyManifestArgs(c.Args().Slice(), &opts); err != nil {
+						return err
+					}
+					return handleManifest(c.Context, opts)
+				},
+			},
+			{
+				Name:      "index-description",
+				Usage:     "manage local description overrides for indexed gists",
+				ArgsUsage: "list | add <id|name> <desc> | remove <id|name>",
+				Action: func(c *ucli.Context) error {
+					return handleDescOverride(c.Context, c.Args().Slice())
+				},
+			},
 		},
 	}
 }
