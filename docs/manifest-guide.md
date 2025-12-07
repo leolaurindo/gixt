@@ -16,11 +16,19 @@ How to define and use `gixt.json` (or a custom manifest name) when running gists
 }
 ```
 
-- `run` (string, required): executed via the shell (`sh -c` on Unix, `cmd /C` on Windows).
+- `run` (string, required): executed via the shell (`sh -c` on Unix, `cmd /C` on Windows). You may run scripts within the gist or call interpreters/runtimes directly.
 - `env` (object, optional): key/value pairs injected into the execution environment.
 - `details` (string, optional): docstring shown by `gixt describe`; defaults to `"No description provided"` when empty/missing.
 - `version` (string, optional): surfaced by `gixt describe` when present.
 - Default filename is `gixt.json`; override with `--manifest <name>` when running or when generating via `gixt manifest`.
+
+
+> [!WARNING] Paths
+> Paths in the `run` key are relative to temporary directory where the gist will be executed from, so it will typically interact with the files already present in the gist.
+> 
+> However, paths used as arguments to the gist are relative to the shell CWD calling the `gixt` command, unless `--isolate` is used, in which case they are relative to the isolated workdir.
+> E.g.: `gixt <gist> [path relative to cwd]`.
+
 
 ## Workflows
 

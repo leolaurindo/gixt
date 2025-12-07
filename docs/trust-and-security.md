@@ -17,7 +17,8 @@ gixt config-trust --show
   - Trusted owners: `gixt config-trust --owner <username>` (repeatable).
     - Remove with `gixt config-trust --remove-owner <username>`.
   - Trusted gists: `--trust-always` on a run stores that gist ID; you can also manage them with `gixt config-trust --remove-gist <id>` or `--clear-gists`.
-- Global trust flag: `--trust-all` on a run immediately sets mode=all and saves it before continuing. **WARNING**: this can be dangerous; use with caution.
+- Global trust flag: `--trust-all` on a run immediately sets mode=all and saves it before continuing. 
+  - **WARNING**: this can be dangerous; use with caution.
 - Non persistent skip: `--yes` or `-y` skips the prompt for that run only.
 
 
