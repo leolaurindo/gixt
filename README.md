@@ -1,6 +1,6 @@
 <div align="center">
 
-# ✨ gixt
+# ✨gixt
 
 ### Run GitHub Gists as real CLI commands
 
