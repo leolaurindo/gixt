@@ -95,6 +95,7 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gix manifest --create|--edit [--name <file>] [--run ... --env KEY=VAL --details ... --version ...] [--force]`: scaffold or update a manifest locally (defaults to `gix.json`).
 - `gix manifest --create|--edit --upload --gist <id|name>`: build the manifest in-memory and upload directly to a user-owned gist (no local write). `--edit --upload` will fetch the existing manifest from the gist when there is no local file. Indexed name or owner/name is allowed; cache/index refresh after upload.
 - `gix manifest --upload --gist <id|name>`: upload an existing local manifest file (no create/edit), refreshing cache/index on success.
+- `gix manifest --view --gist <id|name> [--name <file>]`: fetch and print the manifest JSON from a gist without writing locally (defaults to `gix.json`).
 - `gix index-description add <id|name> <desc> | remove <id|name> | list`: manage local-only description overrides used by `describe`/`list` and resolution with `--desc-lookup`.
 - `gix check-updates [--json]`: compare the current binary against the latest GitHub release and print copy/paste download/replace commands for your platform (does not self update, but includes platform-specific instructions for easy copy/paste).
 

@@ -15,7 +15,7 @@ func TestBuildCommandPrefersExtension(t *testing.T) {
 		t.Fatalf("write main file: %v", err)
 	}
 
-	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"main.py"}, []string{"--foo"})
+	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"main.py"}, []string{"--foo"}, dir)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -37,7 +37,7 @@ func TestBuildCommandUsesManifestWhenPresent(t *testing.T) {
 		t.Fatalf("write manifest: %v", err)
 	}
 
-	cmd, env, reason, err := runner.BuildCommand(dir, "gix.json", []string{"main.sh"}, []string{"ARG"})
+	cmd, env, reason, err := runner.BuildCommand(dir, "gix.json", []string{"main.sh"}, []string{"ARG"}, dir)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 
-	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"script.txt"}, nil)
+	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"script.txt"}, nil, dir)
 	if err != nil {
 		t.Fatalf("BuildCommand shebang error: %v", err)
 	}
@@ -85,7 +85,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 	if err := os.WriteFile(unknownPath, []byte("data"), 0o644); err != nil {
 		t.Fatalf("write unknown file: %v", err)
 	}
-	if _, _, _, err := runner.BuildCommand(dir, "", []string{"weird.xyz"}, nil); err == nil {
+	if _, _, _, err := runner.BuildCommand(dir, "", []string{"weird.xyz"}, nil, dir); err == nil {
 		t.Fatalf("expected error for unknown extension")
 	}
 }

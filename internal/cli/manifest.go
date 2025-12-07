@@ -25,6 +25,7 @@ type manifestOpts struct {
 	create  bool
 	edit    bool
 	upload  bool
+	view    bool
 	gist    string
 	run     string
 	env     []string
@@ -45,7 +46,19 @@ func handleManifest(ctx context.Context, opts manifestOpts) error {
 	}
 
 	if !opts.create && !opts.edit && !opts.upload {
+		if opts.view && opts.gist != "" {
+			return viewRemoteManifest(ctx, opts.gist, filename)
+		}
 		return errors.New("usage: gix manifest [--create|--edit|--upload] [--name <file>] [--run ... --env KEY=VAL ... --details ... --version ...] [--gist <id|name>]")
+	}
+	if opts.view {
+		if opts.create || opts.edit || opts.upload {
+			return errors.New("--view cannot be combined with --create/--edit/--upload")
+		}
+		if opts.gist == "" {
+			return errors.New("--view requires --gist <id|name>")
+		}
+		return viewRemoteManifest(ctx, opts.gist, filename)
 	}
 	if opts.create && opts.edit {
 		return errors.New("choose either --create or --edit, not both")
@@ -287,6 +300,22 @@ func fetchRemoteManifest(ctx context.Context, target string, manifestName string
 		data = body
 	}
 	return runner.LoadRunManifestBytes(data)
+}
+
+func viewRemoteManifest(ctx context.Context, target string, manifestName string) error {
+	if strings.TrimSpace(manifestName) == "" {
+		manifestName = "gix.json"
+	}
+	m, err := fetchRemoteManifest(ctx, target, manifestName)
+	if err != nil {
+		return err
+	}
+	out, err := json.MarshalIndent(m, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
 }
 
 func refreshIndexAndCache(ctx context.Context, paths config.Paths, g gist.Gist, forceUpdate bool) error {

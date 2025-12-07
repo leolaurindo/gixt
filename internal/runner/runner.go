@@ -41,7 +41,7 @@ func LoadRunManifestBytes(data []byte) (RunManifest, error) {
 	return m, nil
 }
 
-func BuildCommand(dir string, manifestPath string, files []string, userArgs []string) ([]string, map[string]string, string, error) {
+func BuildCommand(dir string, manifestPath string, files []string, userArgs []string, execDir string) ([]string, map[string]string, string, error) {
 	if manifestPath != "" {
 		full := filepath.Join(dir, manifestPath)
 		if _, err := os.Stat(full); err == nil {
@@ -52,7 +52,11 @@ func BuildCommand(dir string, manifestPath string, files []string, userArgs []st
 			if strings.TrimSpace(m.Run) == "" {
 				return nil, nil, "", fmt.Errorf("run manifest %s has empty run field", manifestPath)
 			}
-			shellCmd := shellCommand(m.Run)
+			runCmd := m.Run
+			if execDir != "" && execDir != dir {
+				runCmd = rebaseRunToDir(runCmd, dir)
+			}
+			shellCmd := shellCommand(runCmd)
 			return append(shellCmd, userArgs...), m.Env, "manifest", nil
 		}
 	}
@@ -148,4 +152,28 @@ func shellCommand(cmd string) []string {
 		return []string{"cmd", "/C", cmd}
 	}
 	return []string{"sh", "-c", cmd}
+}
+
+func rebaseRunToDir(run string, dir string) string {
+	if strings.TrimSpace(run) == "" {
+		return run
+	}
+	parts := strings.Fields(run)
+	if len(parts) == 0 {
+		return run
+	}
+	for i, p := range parts {
+		if strings.HasPrefix(p, "-") {
+			continue
+		}
+		if filepath.IsAbs(p) {
+			continue
+		}
+		candidate := filepath.Join(dir, p)
+		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
+			parts[i] = candidate
+			break
+		}
+	}
+	return strings.Join(parts, " ")
 }

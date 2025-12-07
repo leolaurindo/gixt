@@ -237,7 +237,7 @@ func runWithOptions(ctx context.Context, opts runOptions, identifier string, for
 	}
 
 	resolvedArgs := resolveUserArgs(forwarded, originalCWD)
-	cmd, envAdd, reason, err := runner.BuildCommand(workDir, opts.manifestFile, files, resolvedArgs)
+	cmd, envAdd, reason, err := runner.BuildCommand(workDir, opts.manifestFile, files, resolvedArgs, execDir)
 	if err != nil {
 		return err
 	}

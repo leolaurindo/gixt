@@ -34,6 +34,9 @@ How to define and use `gix.json` (or a custom manifest name) when running gists 
 - Edit + upload without touching disk: `gix manifest --edit --upload --gist <id|name> --details "Updated" --version 0.2.0`
   - If no local manifest is present, `--edit --upload` fetches the existing manifest from the gist, applies overrides, and uploads the result.
 
+### View a manifest from a gist (no write)
+- `gix manifest --view --gist <id|name> [--name <file>]` prints the manifest JSON from the gist (default `gix.json`) without caching other files.
+
 ### Running with manifests
 - Place the manifest at the gist root (or specify `--manifest <name>`).
 - Command resolution order prefers manifest over shebang/extension maps.
