@@ -9,7 +9,7 @@
 Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases, as well as by ID or URL. You can also fetch from other users. With caching, indexing, and a trust model, `gixt` makes it easy and safe to run code snippets from GitHub Gists.
 
 ```sh
-gixt <gist-name> [gist-args...]
+gixt <gist-name> [GIST-ARGS...]
 ```
 
 
@@ -114,7 +114,7 @@ gixt owner/gist --user-lookup
 By default gixt executes gists in an isolated temp/cache directory for safety. To run a gist in the directory you invoked gixt from, add `--here` (alias `--cwd`):
 
 ```sh
-gixt --here ghinit -m "chore: initial commit"
+gixt --here <gist> [ARGS...]
 ```
 
 If you prefer this behavior by default, set `gixt config-exec --mode cwd` and use `--isolate` on runs where you want the safer temp directory.
