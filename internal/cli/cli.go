@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 
 	ucli "github.com/urfave/cli/v2"
 
@@ -110,6 +111,25 @@ func newApp() *ucli.App {
 						return errors.New("usage: gixt describe <gist-id|url|alias|name|owner/name>")
 					}
 					return handleDescribe(c.Context, c.Args().First())
+				},
+			},
+			{
+				Name:      "set-description",
+				Usage:     "update the description of a user-owned gist",
+				ArgsUsage: "--description <text> --gist <gist-id|url|alias|name|owner/name>",
+				Flags: []ucli.Flag{
+					&ucli.StringFlag{Name: "gist", Usage: "target gist (id|name|owner/name)"},
+					&ucli.StringFlag{Name: "description", Usage: "description text"},
+				},
+				Action: func(c *ucli.Context) error {
+					desc := strings.TrimSpace(c.String("description"))
+					target := strings.TrimSpace(c.String("gist"))
+
+					if target == "" || desc == "" {
+						return errors.New("usage: gixt set-description --description \"<text>\" --gist <gist-id|url|alias|name|owner/name>")
+					}
+
+					return handleSetDescription(c.Context, target, desc)
 				},
 			},
 			{
@@ -299,26 +319,26 @@ func runAction(c *ucli.Context, args []string) error {
 	}
 
 	opts := runOptions{
-		ref:          c.String("ref"),
-		noCache:      c.Bool("no-cache"),
-		update:       c.Bool("update"),
-		updateIndex:  c.Bool("update-index"),
-		cacheDir:     c.String("cache-dir"),
-		manifestFile: c.String("manifest"),
-		printCmd:     c.Bool("print-cmd"),
-		dryRun:       c.Bool("dry-run"),
-		view:         c.Bool("view"),
-		clearCache:   c.Bool("clear-cache"),
-		verbose:      c.Bool("verbose"),
-		userLookup:   c.Bool("user-lookup"),
-		descLookup:   c.Bool("desc-lookup"),
-		userPages:    c.Int("user-pages"),
-		isolate:      c.Bool("isolate"),
-		cwd:          c.Bool("cwd"),
-		timeout:      c.Duration("timeout"),
-		yes:          c.Bool("yes"),
-		trustAlways:  c.Bool("trust-always"),
-		trustAll:     c.Bool("trust-all"),
+		ref:            c.String("ref"),
+		noCache:        c.Bool("no-cache"),
+		update:         c.Bool("update"),
+		updateIndex:    c.Bool("update-index"),
+		cacheDir:       c.String("cache-dir"),
+		manifestFile:   c.String("manifest"),
+		printCmd:       c.Bool("print-cmd"),
+		dryRun:         c.Bool("dry-run"),
+		view:           c.Bool("view"),
+		clearCache:     c.Bool("clear-cache"),
+		verbose:        c.Bool("verbose"),
+		userLookup:     c.Bool("user-lookup"),
+		descLookup:     c.Bool("desc-lookup"),
+		userPages:      c.Int("user-pages"),
+		isolate:        c.Bool("isolate"),
+		cwd:            c.Bool("cwd"),
+		timeout:        c.Duration("timeout"),
+		yes:            c.Bool("yes"),
+		trustAlways:    c.Bool("trust-always"),
+		trustAll:       c.Bool("trust-all"),
 		ignoreManifest: c.Bool("ignore-manifest"),
 	}
 

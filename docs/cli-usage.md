@@ -100,6 +100,7 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gixt index-description add <id|name> <desc> | remove <id|name> | list`: manage local-only description overrides used by `describe`/`list` and resolution with `--desc-lookup`.
 - `gixt clone <id|name> [--dir <path>]`: clone a gist into a local directory (wraps `gh gist clone`).
 - `gixt fork <id|name> [--public] [--description <desc>]`: copy a gist into a new user-owned gist (private by default), reusing files and optional description override.
+- `gixt set-description --description "<text>" --gist <id|name|owner/name>`: update the description of a user-owned gist without running it.
 - `gixt check-updates [--json]`: compare the current binary against the latest GitHub release and print copy/paste download/replace commands for your platform (does not self update, but includes platform-specific instructions for easy copy/paste).
 
 ## Manifest example

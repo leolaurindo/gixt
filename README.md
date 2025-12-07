@@ -24,6 +24,7 @@ gixt <gist-name> [gist-args...]
 - Implicit resolver for commands: [manifest](docs/manifest-guide.md), shebang, or extension map.
 - `gixt manifest` scaffolds/edits/uploads/views `gixt.json` (with details/version/docstring) and keeps cache/index in sync.
 - `gixt clone` and `gixt fork` help bring gists locally or copy them to your own account.
+- Update your own gist descriptions with `gixt set-description --description "new description" --gist <id|name|owner/name>`.
 - Anything after -- is passed verbatim to the gist (needed when gist args start with -/--).
 - Relative paths are rebased to your original shell CWD so they still point to the same files if gixt runs in an isolated workdir.
 

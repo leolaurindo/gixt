@@ -151,6 +151,36 @@ func UpdateFiles(ctx context.Context, id string, files map[string]string) (Gist,
 	return g, nil
 }
 
+func UpdateDescription(ctx context.Context, id string, description string) (Gist, error) {
+	payload := struct {
+		Description string `json:"description"`
+	}{
+		Description: description,
+	}
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return Gist{}, fmt.Errorf("encode gist payload: %w", err)
+	}
+	path := fmt.Sprintf("/gists/%s", id)
+	cmd := exec.CommandContext(ctx, "gh", "api", "-X", "PATCH", path, "--input", "-")
+	cmd.Stdin = bytes.NewReader(body)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return Gist{}, fmt.Errorf("gh api patch %s failed: %v: %s", id, err, strings.TrimSpace(stderr.String()))
+	}
+	var g Gist
+	if err := json.Unmarshal(out, &g); err != nil {
+		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	}
+	g.Raw = map[string]any{}
+	if err := json.Unmarshal(out, &g.Raw); err != nil {
+		// ignore secondary parse failure
+	}
+	return g, nil
+}
+
 func Create(ctx context.Context, files map[string]string, description string, public bool) (Gist, error) {
 	type filePayload struct {
 		Content string `json:"content"`
