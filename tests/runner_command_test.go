@@ -6,7 +6,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/leolaurindo/gix/internal/runner"
+	"github.com/leolaurindo/gixt/internal/runner"
 )
 
 func TestBuildCommandPrefersExtension(t *testing.T) {
@@ -34,11 +34,11 @@ func TestBuildCommandUsesManifestWhenPresent(t *testing.T) {
 		t.Fatalf("write main file: %v", err)
 	}
 	manifest := `{"run":"echo hi","env":{"FOO":"BAR"}}`
-	if err := os.WriteFile(filepath.Join(dir, "gix.json"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "gixt.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
-	cmd, env, reason, err := runner.BuildCommand(dir, "gix.json", []string{"main.sh"}, []string{"ARG"}, dir)
+	cmd, env, reason, err := runner.BuildCommand(dir, "gixt.json", []string{"main.sh"}, []string{"ARG"}, dir)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -71,11 +71,11 @@ func TestBuildCommandRebasesManifestRunWhenExecDirDiffers(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 	manifest := `{"run":"python tool.py"}`
-	if err := os.WriteFile(filepath.Join(dir, "gix.json"), []byte(manifest), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(dir, "gixt.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
 	}
 
-	cmd, _, reason, err := runner.BuildCommand(dir, "gix.json", []string{"tool.py"}, nil, other)
+	cmd, _, reason, err := runner.BuildCommand(dir, "gixt.json", []string{"tool.py"}, nil, other)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}

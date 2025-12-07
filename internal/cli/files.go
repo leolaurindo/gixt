@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/gist"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/gist"
 )
 
 func materializeFiles(g gist.Gist, dir string, forceUpdate bool) ([]string, bool, error) {

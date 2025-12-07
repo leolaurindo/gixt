@@ -8,11 +8,11 @@ import (
 
 	ucli "github.com/urfave/cli/v2"
 
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/version"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/version"
 )
 
-const commandName = "gix"
+const commandName = "gixt"
 
 const (
 	clrTitle  = "\033[1;36m"
@@ -36,7 +36,7 @@ func newApp() *ucli.App {
 		Name:      commandName,
 		Version:   version.Version,
 		Usage:     "run code directly from GitHub gists",
-		UsageText: "gix [run flags] <gist-id|url|alias|name> [-- <args to gist>]",
+		UsageText: "gixt [run flags] <gist-id|url|alias|name> [-- <args to gist>]",
 		Flags:     runFlags,
 		Action: func(c *ucli.Context) error {
 			return runAction(c, c.Args().Slice())
@@ -107,7 +107,7 @@ func newApp() *ucli.App {
 				ArgsUsage: "<gist-id|url|alias|name|owner/name>",
 				Action: func(c *ucli.Context) error {
 					if c.Args().Len() == 0 {
-						return errors.New("usage: gix describe <gist-id|url|alias|name|owner/name>")
+						return errors.New("usage: gixt describe <gist-id|url|alias|name|owner/name>")
 					}
 					return handleDescribe(c.Context, c.Args().First())
 				},
@@ -177,7 +177,7 @@ func newApp() *ucli.App {
 				},
 				Action: func(c *ucli.Context) error {
 					if c.Args().Len() == 0 {
-						return errors.New("usage: gix register <gist-id|url> [--ref <sha>]")
+						return errors.New("usage: gixt register <gist-id|url> [--ref <sha>]")
 					}
 					return handleRegister(c.Context, c.Args().First(), c.String("ref"), c.String("cache-dir"), c.Bool("update"))
 				},
@@ -206,7 +206,7 @@ func newApp() *ucli.App {
 			},
 			{
 				Name:  "check-updates",
-				Usage: "check if a newer gix release is available",
+				Usage: "check if a newer gixt release is available",
 				Flags: []ucli.Flag{
 					&ucli.BoolFlag{Name: "json", Usage: "output machine-readable update info"},
 				},
@@ -223,7 +223,7 @@ func newApp() *ucli.App {
 				},
 				Action: func(c *ucli.Context) error {
 					if c.Args().Len() == 0 {
-						return errors.New("usage: gix clone <gist-id|url|alias|name|owner/name> [--dir <path>]")
+						return errors.New("usage: gixt clone <gist-id|url|alias|name|owner/name> [--dir <path>]")
 					}
 					return handleClone(c.Context, c.Args().First(), c.String("dir"))
 				},
@@ -238,17 +238,17 @@ func newApp() *ucli.App {
 				},
 				Action: func(c *ucli.Context) error {
 					if c.Args().Len() == 0 {
-						return errors.New("usage: gix fork <gist-id|url|alias|name|owner/name> [--public] [--description <desc>]")
+						return errors.New("usage: gixt fork <gist-id|url|alias|name|owner/name> [--public] [--description <desc>]")
 					}
 					return handleFork(c.Context, c.Args().First(), c.Bool("public"), c.String("description"))
 				},
 			},
 			{
 				Name:      "manifest",
-				Usage:     "create, edit, or upload gix manifest files",
+				Usage:     "create, edit, or upload gixt manifest files",
 				ArgsUsage: "",
 				Flags: []ucli.Flag{
-					&ucli.StringFlag{Name: "name", Usage: "manifest filename", Value: "gix.json"},
+					&ucli.StringFlag{Name: "name", Usage: "manifest filename", Value: "gixt.json"},
 					&ucli.BoolFlag{Name: "create", Usage: "create a new manifest locally"},
 					&ucli.BoolFlag{Name: "edit", Usage: "edit/overwrite an existing manifest"},
 					&ucli.BoolFlag{Name: "upload", Usage: "upload the manifest to a user-owned gist"},
@@ -336,7 +336,7 @@ func runFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: "update", Usage: "force re-download even if cached"},
 		&ucli.BoolFlag{Name: "update-index", Usage: "refresh friendly-name index before running"},
 		&ucli.StringFlag{Name: "cache-dir", Usage: "override cache directory"},
-		&ucli.StringFlag{Name: "manifest", Value: "gix.json", Usage: "run manifest filename"},
+		&ucli.StringFlag{Name: "manifest", Value: "gixt.json", Usage: "run manifest filename"},
 		&ucli.BoolFlag{Name: "print-cmd", Usage: "print resolved command"},
 		&ucli.BoolFlag{Name: "dry-run", Usage: "resolve but do not execute"},
 		&ucli.BoolFlag{Name: "view", Usage: "print gist text content and exit without running"},

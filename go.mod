@@ -1,4 +1,4 @@
-module github.com/leolaurindo/gix
+module github.com/leolaurindo/gixt
 
 go 1.21
 

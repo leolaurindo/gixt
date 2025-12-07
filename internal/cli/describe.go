@@ -9,18 +9,18 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/index"
-	"github.com/leolaurindo/gix/internal/indexdesc"
-	"github.com/leolaurindo/gix/internal/runner"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/index"
+	"github.com/leolaurindo/gixt/internal/indexdesc"
+	"github.com/leolaurindo/gixt/internal/runner"
 )
 
 func handleDescribe(ctx context.Context, input string) error {
 	target := strings.TrimSpace(input)
 	if target == "" {
-		return errors.New("usage: gix describe <gist-id|url|alias|name|owner/name>")
+		return errors.New("usage: gixt describe <gist-id|url|alias|name|owner/name>")
 	}
 
 	paths, err := ensurePaths("")
@@ -157,7 +157,7 @@ func findManifestFile(dir string, files []string) string {
 	if dir == "" {
 		return ""
 	}
-	candidates := []string{"gix.json", "manifest.json"}
+	candidates := []string{"gixt.json", "manifest.json"}
 	for _, cand := range candidates {
 		path := filepath.Join(dir, cand)
 		if _, err := os.Stat(path); err == nil {
@@ -165,7 +165,7 @@ func findManifestFile(dir string, files []string) string {
 		}
 	}
 	for _, f := range files {
-		if strings.EqualFold(filepath.Base(f), "gix.json") {
+		if strings.EqualFold(filepath.Base(f), "gixt.json") {
 			path := filepath.Join(dir, f)
 			if _, err := os.Stat(path); err == nil {
 				return path

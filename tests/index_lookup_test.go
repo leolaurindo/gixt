@@ -4,7 +4,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gixt/internal/index"
 )
 
 func TestLookupMatchesDescriptionAndFilename(t *testing.T) {

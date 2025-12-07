@@ -1,31 +1,31 @@
 <div align="center">
 
-# ✨ gix
+# ✨ gixt
 
 ### Run GitHub Gists as real CLI commands
 
 </div>
 
-Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases, as well as by ID or URL. You can also fetch from other users. With caching, indexing, and a trust model, `gix` makes it easy and safe to run code snippets from GitHub Gists.
+Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases, as well as by ID or URL. You can also fetch from other users. With caching, indexing, and a trust model, `gixt` makes it easy and safe to run code snippets from GitHub Gists.
 
 ```sh
-gix <gist-name> [gist-args...]
+gixt <gist-name> [gist-args...]
 ```
 
 
 ## Features and highlights
 
-- Index gists so you can type `gix hello-world` instead of pasting long IDs.
-- Manage aliases (`gix alias add/list/remove`) for frequently used gists.
+- Index gists so you can type `gixt hello-world` instead of pasting long IDs.
+- Manage aliases (`gixt alias add/list/remove`) for frequently used gists.
 - Choose between ephemeral runs or a persistent cache.
 - Control where code executes: isolated work directory or your current directory.
 - Configure a trust policy and prompts before executing untrusted code.
 - Inspect what will run with `--view` and `--dry-run`.
 - Implicit resolver for commands: [manifest](docs/manifest-guide.md), shebang, or extension map.
-- `gix manifest` scaffolds/edits/uploads/views `gix.json` (with details/version/docstring) and keeps cache/index in sync.
-- `gix clone` and `gix fork` help bring gists locally or copy them to your own account.
+- `gixt manifest` scaffolds/edits/uploads/views `gixt.json` (with details/version/docstring) and keeps cache/index in sync.
+- `gixt clone` and `gixt fork` help bring gists locally or copy them to your own account.
 - Anything after -- is passed verbatim to the gist (needed when gist args start with -/--).
-- Relative paths are rebased to your original shell CWD so they still point to the same files if gix runs in an isolated workdir.
+- Relative paths are rebased to your original shell CWD so they still point to the same files if gixt runs in an isolated workdir.
 
 
 ## Quick start
@@ -38,32 +38,32 @@ gix <gist-name> [gist-args...]
 
 ### Option 1: Download prebuilt binary
 
-- Go to the [releases page](https://github.com/leolaurindo/gix-cli/releases) and download the appropriate binary for your OS.
+- Go to the [releases page](https://github.com/leolaurindo/gixt-cli/releases) and download the appropriate binary for your OS.
 
 
 ### Option 2: Build
 
 ```sh
-go build -o bin/gix ./cmd/gix
+go build -o bin/gixt ./cmd/gixt
 ```
 
-For both options, place `gix` (macOS/Linux) or `gix.exe` (Windows) somewhere on your `PATH` (e.g., `~/.local/bin`, `/usr/local/bin`, or `%USERPROFILE%\bin`, or any other directory on your PATH).
+For both options, place `gixt` (macOS/Linux) or `gixt.exe` (Windows) somewhere on your `PATH` (e.g., `~/.local/bin`, `/usr/local/bin`, or `%USERPROFILE%\bin`, or any other directory on your PATH).
 
 ### Option 3: Install via `go install`
 
-If you have Go in your environment, you can install `gix` as a go tool with:
+If you have Go in your environment, you can install `gixt` as a go tool with:
 
 ```sh
-go install github.com/leolaurindo/gix/cmd/gix@latest
+go install github.com/leolaurindo/gixt/cmd/gixt@latest
 ```
 
 This installs to your Go `GOBIN`/`GOPATH/bin`; ensure that directory is on your `PATH`.
 
 ### Updating
 
-- If installed with `go install`, update by re-running `go install github.com/leolaurindo/gix/cmd/gix@latest`.
-- If using a prebuilt binary, download the latest release and replace the existing `gix` on your `PATH`.
-- ✨ To check whether a newer release exists (and get copy/paste commands to download/replace), run `gix check-updates`.
+- If installed with `go install`, update by re-running `go install github.com/leolaurindo/gixt/cmd/gixt@latest`.
+- If using a prebuilt binary, download the latest release and replace the existing `gixt` on your `PATH`.
+- ✨ To check whether a newer release exists (and get copy/paste commands to download/replace), run `gixt check-updates`.
 
 
 ### First runs
@@ -72,16 +72,16 @@ This installs to your Go `GOBIN`/`GOPATH/bin`; ensure that directory is on your 
 
 ```sh
 # index your own gists so you can run them by name
-gix index-mine
+gixt index-mine
 
-# see what gists are indexed by gix
-gix list
+# see what gists are indexed by gixt
+gixt list
 
 # trust your own gists
-gix config-trust --mode mine
+gixt config-trust --mode mine
 
 # run your gists by file basename
-gix hello-world
+gixt hello-world
 ```
 
 **Other examples:**
@@ -89,41 +89,41 @@ gix hello-world
 
 ```sh
 # run by gist ID or URL
-gix 1234567890abcdef
-gix https://gist.github.com/you/1234567890abcdef
+gixt 1234567890abcdef
+gixt https://gist.github.com/you/1234567890abcdef
 
 # add an alias and use it
-gix alias add hello 1234567890abcdef
-gix hello
+gixt alias add hello 1234567890abcdef
+gixt hello
 
  # index another user's gists
-gix index-owner <username>
+gixt index-owner <username>
 
 # cache without running
-gix register <gist-id>
+gixt register <gist-id>
 
 
 # search for gists! this can be dangerous, but trust
 # configs help manage safety
-gix owner/gist --user-lookup
+gixt owner/gist --user-lookup
 ```
 
 ### Run in your current directory
 
-By default gix executes gists in an isolated temp/cache directory for safety. To run a gist in the directory you invoked gix from, add `--here` (alias `--cwd`):
+By default gixt executes gists in an isolated temp/cache directory for safety. To run a gist in the directory you invoked gixt from, add `--here` (alias `--cwd`):
 
 ```sh
-gix --here ghinit -m "chore: initial commit"
+gixt --here ghinit -m "chore: initial commit"
 ```
 
-If you prefer this behavior by default, set `gix config-exec --mode cwd` and use `--isolate` on runs where you want the safer temp directory.
+If you prefer this behavior by default, set `gixt config-exec --mode cwd` and use `--isolate` on runs where you want the safer temp directory.
 
 
 ## Using names instead of IDs
 
-To run gists by friendly names, `gix` uses an index stored in your config directory. Index is just a local mapping of names to gist IDs.
+To run gists by friendly names, `gixt` uses an index stored in your config directory. Index is just a local mapping of names to gist IDs.
 
-Populate it with `gix index-mine` (syncs all your gists, adding new ones and removing deleted) or `gix index-owner <owner>` (another user). Then run gists by name:
+Populate it with `gixt index-mine` (syncs all your gists, adding new ones and removing deleted) or `gixt index-owner <owner>` (another user). Then run gists by name:
 
 - Use the file basename as the identifier (`hello-world` for `hello-world.py`).
 - Use `owner/name` to disambiguate when multiple owners have the same name.
@@ -149,11 +149,11 @@ Running code from untrusted sources can be dangerous. Use the [trust model](docs
 
 ## Uninstall
 
-- Delete the installed binary (e.g., `bin/gix` or `bin/gix.exe`, or wherever you placed it on PATH).
+- Delete the installed binary (e.g., `bin/gixt` or `bin/gixt.exe`, or wherever you placed it on PATH).
 - Remove config/cache dirs to clear aliases, index, settings, and cached gists:
-  - Windows: config `%APPDATA%\gix`, cache `%LOCALAPPDATA%\gix`
-  - macOS: config `~/Library/Application Support/gix`, cache `~/Library/Caches/gix`
-  - Linux: config `~/.config/gix`, cache `~/.cache/gix`
+  - Windows: config `%APPDATA%\gixt`, cache `%LOCALAPPDATA%\gixt`
+  - macOS: config `~/Library/Application Support/gixt`, cache `~/Library/Caches/gixt`
+  - Linux: config `~/.config/gixt`, cache `~/.cache/gixt`
 
 
 ## Contributing
@@ -163,6 +163,6 @@ Contributions are welcome! I will eventually write contribution guidelines, but 
 
 ## Motivation
 
-This is a small project for educational purposes and personal use. I wanted a simple way to run gists as commands without installing them globally or copying code around. Although possible, it involves some boilerplate. `gix` is much more ergonomic. 
+This is a small project for educational purposes and personal use. I wanted a simple way to run gists as commands without installing them globally or copying code around. Although possible, it involves some boilerplate. `gixt` is much more ergonomic. 
 
 Freely inspired by the user experience `uvx` provides. AI tools were used for boilerplate, documentation, testing, syntax (I am learning golang) and some refactoring, but the design and implementation are mainly my own.

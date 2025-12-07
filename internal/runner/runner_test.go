@@ -8,7 +8,7 @@ import (
 
 func TestLoadRunManifestDefaultsDetails(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gix.json")
+	path := filepath.Join(dir, "gixt.json")
 	// details omitted, env nil -> should default details and initialize env
 	data := `{"run":"echo hi","version":"1.2.3"}`
 	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
@@ -32,7 +32,7 @@ func TestLoadRunManifestDefaultsDetails(t *testing.T) {
 
 func TestLoadRunManifestRejectsBadRun(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gix.json")
+	path := filepath.Join(dir, "gixt.json")
 	data := "{ \"run\": \"echo hi\\nrm -rf /\" }"
 	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)
@@ -44,7 +44,7 @@ func TestLoadRunManifestRejectsBadRun(t *testing.T) {
 
 func TestLoadRunManifestRejectsUnknownField(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gix.json")
+	path := filepath.Join(dir, "gixt.json")
 	data := "{ \"run\": \"echo hi\", \"unexpected\": true }"
 	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
 		t.Fatalf("write manifest: %v", err)

@@ -55,4 +55,4 @@ jobs:
         shell: bash
         run: |
           mkdir -p bin
-          go build -o bin/gix ./cmd/gix
+          go build -o bin/gixt ./cmd/gixt

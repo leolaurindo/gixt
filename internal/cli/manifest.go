@@ -12,12 +12,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/index"
-	"github.com/leolaurindo/gix/internal/runner"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/index"
+	"github.com/leolaurindo/gixt/internal/runner"
 )
 
 type manifestOpts struct {
@@ -37,7 +37,7 @@ type manifestOpts struct {
 func handleManifest(ctx context.Context, opts manifestOpts) error {
 	filename := opts.name
 	if filename == "" {
-		filename = "gix.json"
+		filename = "gixt.json"
 	}
 	targetPath := filename
 	if !filepath.IsAbs(targetPath) {
@@ -49,7 +49,7 @@ func handleManifest(ctx context.Context, opts manifestOpts) error {
 		if opts.view && opts.gist != "" {
 			return viewRemoteManifest(ctx, opts.gist, filename)
 		}
-		return errors.New("usage: gix manifest [--create|--edit|--upload] [--name <file>] [--run ... --env KEY=VAL ... --details ... --version ...] [--gist <id|name>]")
+		return errors.New("usage: gixt manifest [--create|--edit|--upload] [--name <file>] [--run ... --env KEY=VAL ... --details ... --version ...] [--gist <id|name>]")
 	}
 	if opts.view {
 		if opts.create || opts.edit || opts.upload {
@@ -158,9 +158,9 @@ func handleManifest(ctx context.Context, opts manifestOpts) error {
 }
 
 // applyManifestArgs allows positional overrides like:
-// gix manifest --edit version 0.0.1
-// gix manifest --create run "python app.py"
-// gix manifest --edit env KEY=VAL env OTHER=VAL
+// gixt manifest --edit version 0.0.1
+// gixt manifest --create run "python app.py"
+// gixt manifest --edit env KEY=VAL env OTHER=VAL
 func applyManifestArgs(args []string, opts *manifestOpts) error {
 	for i := 0; i < len(args); {
 		key := strings.ToLower(args[i])
@@ -304,7 +304,7 @@ func fetchRemoteManifest(ctx context.Context, target string, manifestName string
 
 func viewRemoteManifest(ctx context.Context, target string, manifestName string) error {
 	if strings.TrimSpace(manifestName) == "" {
-		manifestName = "gix.json"
+		manifestName = "gixt.json"
 	}
 	m, err := fetchRemoteManifest(ctx, target, manifestName)
 	if err != nil {

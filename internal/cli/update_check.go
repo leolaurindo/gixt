@@ -12,10 +12,10 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/version"
+	"github.com/leolaurindo/gixt/internal/version"
 )
 
-const updateRepo = "leolaurindo/gix"
+const updateRepo = "leolaurindo/gixt"
 
 type releaseAsset struct {
 	Name               string `json:"name"`
@@ -90,7 +90,7 @@ func handleCheckUpdates(ctx context.Context, outputJSON bool) error {
 	fmt.Printf("current version: %s\n", res.CurrentVersion)
 	fmt.Printf("latest version:  %s\n", res.LatestVersion)
 	if !res.UpdateAvailable {
-		fmt.Println("gix is up to date.")
+		fmt.Println("gixt is up to date.")
 		return nil
 	}
 
@@ -154,12 +154,12 @@ func buildUpdateCommands(asset *releaseAsset, installPath string, writable bool)
 }
 
 func buildPosixCommands(asset *releaseAsset, installPath string, writable bool) []string {
-	tmpDir := filepath.Join(os.TempDir(), "gix-update")
+	tmpDir := filepath.Join(os.TempDir(), "gixt-update")
 	downloadPath := filepath.Join(tmpDir, asset.Name)
 	extractDir := filepath.Join(tmpDir, "extract")
-	binaryName := "gix"
+	binaryName := "gixt"
 	if strings.HasSuffix(strings.ToLower(asset.Name), ".zip") {
-		binaryName = "gix"
+		binaryName = "gixt"
 	}
 	binaryPath := filepath.Join(extractDir, binaryName)
 
@@ -176,7 +176,7 @@ func buildPosixCommands(asset *releaseAsset, installPath string, writable bool) 
 	case strings.HasSuffix(lower, ".zip"):
 		cmds = append(cmds, fmt.Sprintf("unzip -o %s -d %s", shellQuote(downloadPath), shellQuote(extractDir)))
 	case strings.HasSuffix(lower, ".gz"):
-		binaryPath = filepath.Join(tmpDir, "gix")
+		binaryPath = filepath.Join(tmpDir, "gixt")
 		cmds = append(cmds,
 			fmt.Sprintf("gunzip -c %s > %s", shellQuote(downloadPath), shellQuote(binaryPath)),
 		)
@@ -195,10 +195,10 @@ func buildPosixCommands(asset *releaseAsset, installPath string, writable bool) 
 }
 
 func buildWindowsCommands(asset *releaseAsset, installPath string) []string {
-	tmpBase := `$env:TEMP\\gix-update`
+	tmpBase := `$env:TEMP\\gixt-update`
 	downloadPath := tmpBase + `\\` + asset.Name
 	extractDir := tmpBase + `\\extract`
-	binaryPath := extractDir + `\\gix.exe`
+	binaryPath := extractDir + `\\gixt.exe`
 
 	var cmds []string
 	cmds = append(cmds,
@@ -284,7 +284,7 @@ func toInt(s string) int {
 }
 
 func isPathWritable(dir string) bool {
-	tmp := filepath.Join(dir, ".gix-write-test")
+	tmp := filepath.Join(dir, ".gixt-write-test")
 	if err := os.WriteFile(tmp, []byte("ok"), 0o644); err != nil {
 		return false
 	}

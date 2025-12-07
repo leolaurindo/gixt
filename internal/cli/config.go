@@ -6,7 +6,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/config"
+	"github.com/leolaurindo/gixt/internal/config"
 )
 
 func handleConfigTrust(_ context.Context, mode string, owners []string, removeOwners []string, removeGists []string, clearOwners, clearGists, reset, show bool) error {

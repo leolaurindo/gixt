@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/indexdesc"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/indexdesc"
 )
 
 func handleDescOverride(ctx context.Context, args []string) error {
@@ -39,7 +39,7 @@ func handleDescOverride(ctx context.Context, args []string) error {
 		return nil
 	case "add":
 		if len(args) < 3 {
-			return errors.New("usage: gix index-description add <id|name> <description>")
+			return errors.New("usage: gixt index-description add <id|name> <description>")
 		}
 		target := args[1]
 		desc := indexdesc.Normalize(strings.Join(args[2:], " "))
@@ -58,7 +58,7 @@ func handleDescOverride(ctx context.Context, args []string) error {
 		return nil
 	case "remove":
 		if len(args) < 2 {
-			return errors.New("usage: gix index-description remove <id|name>")
+			return errors.New("usage: gixt index-description remove <id|name>")
 		}
 		target := args[1]
 		id, _, _, err := resolveIdentifier(ctx, target, aliases, paths, false, true, normalizeUserPages(0))
@@ -72,6 +72,6 @@ func handleDescOverride(ctx context.Context, args []string) error {
 		fmt.Printf("removed description override for %s\n", id)
 		return nil
 	default:
-		return errors.New("usage: gix index-description [list|add|remove] ...")
+		return errors.New("usage: gixt index-description [list|add|remove] ...")
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/leolaurindo/gix/internal/config"
+	"github.com/leolaurindo/gixt/internal/config"
 )
 
 func TestTrustDecisionOrdering(t *testing.T) {

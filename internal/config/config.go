@@ -26,8 +26,8 @@ func Discover(cacheOverride string) (Paths, error) {
 		return Paths{}, fmt.Errorf("detect cache dir: %w", err)
 	}
 
-	cfgDir := filepath.Join(cfgRoot, "gix")
-	cacheDir := filepath.Join(cacheRoot, "gix")
+	cfgDir := filepath.Join(cfgRoot, "gixt")
+	cacheDir := filepath.Join(cacheRoot, "gixt")
 	if cacheOverride != "" {
 		if filepath.IsAbs(cacheOverride) {
 			cacheDir = cacheOverride

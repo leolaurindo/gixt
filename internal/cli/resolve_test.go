@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/index"
 )
 
 func TestResolveIdentifierPrefersAliasThenID(t *testing.T) {

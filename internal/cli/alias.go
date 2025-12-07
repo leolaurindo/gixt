@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/gist"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/gist"
 )
 
 func handleAlias(args []string) error {
@@ -28,7 +28,7 @@ func handleAlias(args []string) error {
 	switch args[0] {
 	case "add":
 		if len(args) < 3 {
-			return errors.New("usage: gix alias add <name> <gist-id>")
+			return errors.New("usage: gixt alias add <name> <gist-id>")
 		}
 		name := args[1]
 		id := gist.ExtractID(args[2])
@@ -43,7 +43,7 @@ func handleAlias(args []string) error {
 		return nil
 	case "remove":
 		if len(args) < 2 {
-			return errors.New("usage: gix alias remove <name>")
+			return errors.New("usage: gixt alias remove <name>")
 		}
 		name := args[1]
 		if _, ok := aliases[name]; !ok {

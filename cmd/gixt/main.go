@@ -4,7 +4,7 @@ import (
 	"context"
 	"os"
 
-	"github.com/leolaurindo/gix/internal/cli"
+	"github.com/leolaurindo/gixt/internal/cli"
 )
 
 func main() {

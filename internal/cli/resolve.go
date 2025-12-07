@@ -7,10 +7,10 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/index"
-	"github.com/leolaurindo/gix/internal/indexdesc"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/index"
+	"github.com/leolaurindo/gixt/internal/indexdesc"
 )
 
 func resolveIdentifier(ctx context.Context, input string, aliases map[string]string, paths config.Paths, userLookup bool, descLookup bool, userPages int) (string, string, bool, error) {
@@ -93,7 +93,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 
 	if id == "" || !gist.IsLikelyGistID(id) {
 		return "", "", false, fmt.Errorf(
-			"could not resolve %q as alias, gist id, URL, indexed name, or owner/name (try `gix index-mine`, `gix index-owner`, or `owner/name` with -u)",
+			"could not resolve %q as alias, gist id, URL, indexed name, or owner/name (try `gixt index-mine`, `gixt index-owner`, or `owner/name` with -u)",
 			input,
 		)
 	}

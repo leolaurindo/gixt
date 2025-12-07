@@ -11,12 +11,12 @@ import (
 	"text/tabwriter"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/index"
-	"github.com/leolaurindo/gix/internal/indexdesc"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/index"
+	"github.com/leolaurindo/gixt/internal/indexdesc"
 )
 
 type listRow struct {
@@ -209,7 +209,7 @@ func handleList(ctx context.Context, cacheOnly bool, mine bool) error {
 
 func handleIndexOwner(ctx context.Context, owner string) error {
 	if owner == "" {
-		return errors.New("usage: gix index-owner --owner <login>")
+		return errors.New("usage: gixt index-owner --owner <login>")
 	}
 
 	paths, err := ensurePaths("")

@@ -10,11 +10,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/runner"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/runner"
 )
 
 type runOptions struct {
@@ -46,7 +46,7 @@ var errViewAborted = errors.New("aborted after view")
 func handleRegister(ctx context.Context, id string, ref string, cacheOverride string, update bool) error {
 	id = gist.ExtractID(id)
 	if id == "" {
-		return errors.New("usage: gix register <gist-id|url> [--ref <sha>]")
+		return errors.New("usage: gixt register <gist-id|url> [--ref <sha>]")
 	}
 	paths, err := ensurePaths(cacheOverride)
 	if err != nil {
@@ -272,7 +272,7 @@ func runWithOptions(ctx context.Context, opts runOptions, identifier string, for
 
 func prepareWorkDir(cacheRoot, gistID, sha string, temp bool, verbose bool) (string, func(), error) {
 	if temp {
-		tmpDir, err := os.MkdirTemp(cacheRoot, "gix-")
+		tmpDir, err := os.MkdirTemp(cacheRoot, "gixt-")
 		if err != nil {
 			return "", nil, fmt.Errorf("create temp dir: %w", err)
 		}
@@ -315,7 +315,7 @@ func promptTrust(m cache.Manifest, dir string) error {
 	fmt.Printf("Description: %s\n", strings.TrimSpace(m.Description))
 	fmt.Printf("Commit: %s\n", cache.Shorten(m.SHA))
 	fmt.Printf("Files: %s\n", strings.Join(m.Files, ", "))
-	fmt.Printf("%sTip: manage trust defaults with `gix config-trust --mode mine|all --owner <name>`.%s\n", clrInfo, clrReset)
+	fmt.Printf("%sTip: manage trust defaults with `gixt config-trust --mode mine|all --owner <name>`.%s\n", clrInfo, clrReset)
 	fmt.Printf("%sProceed? [y/N/v]: %s", clrPrompt, clrReset)
 	var resp string
 	fmt.Scanln(&resp)

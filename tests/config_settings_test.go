@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/leolaurindo/gix/internal/config"
+	"github.com/leolaurindo/gixt/internal/config"
 )
 
 func TestLoadSettingsDefaults(t *testing.T) {

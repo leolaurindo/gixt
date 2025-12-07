@@ -4,8 +4,8 @@ import (
 	"context"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/gist"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/gist"
 )
 
 func trustDecision(ctx context.Context, settings config.Settings, owner string, gistID string, yesFlag bool) bool {

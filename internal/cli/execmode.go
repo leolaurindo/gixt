@@ -6,7 +6,7 @@ import (
 	"io"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/config"
+	"github.com/leolaurindo/gixt/internal/config"
 )
 
 // decideExecMode selects the execution directory mode given stored settings and per-run overrides.

@@ -10,15 +10,15 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/leolaurindo/gix/internal/alias"
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/gist"
-	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gixt/internal/alias"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/gist"
+	"github.com/leolaurindo/gixt/internal/index"
 )
 
 func handleClone(ctx context.Context, target string, dir string) error {
 	if strings.TrimSpace(target) == "" {
-		return errors.New("usage: gix clone <gist-id|url|alias|name|owner/name> [--dir <path>]")
+		return errors.New("usage: gixt clone <gist-id|url|alias|name|owner/name> [--dir <path>]")
 	}
 	paths, err := ensurePaths("")
 	if err != nil {
@@ -49,7 +49,7 @@ func handleClone(ctx context.Context, target string, dir string) error {
 
 func handleFork(ctx context.Context, target string, public bool, desc string) error {
 	if strings.TrimSpace(target) == "" {
-		return errors.New("usage: gix fork <gist-id|url|alias|name|owner/name> [--public] [--description <desc>]")
+		return errors.New("usage: gixt fork <gist-id|url|alias|name|owner/name> [--public] [--description <desc>]")
 	}
 	paths, err := ensurePaths("")
 	if err != nil {

@@ -51,24 +51,24 @@ jobs:
         run: |
           mkdir -p dist
           GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build \
-            -ldflags "-X github.com/leolaurindo/gix/internal/version.Version=${VERSION}" \
-            -o dist/gix${{ matrix.ext }} ./cmd/gix
+            -ldflags "-X github.com/leolaurindo/gixt/internal/version.Version=${VERSION}" \
+            -o dist/gixt${{ matrix.ext }} ./cmd/gixt
 
       - name: Package
         run: |
           cd dist
-          NAME=gix_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}
+          NAME=gixt_${VERSION}_${{ matrix.goos }}_${{ matrix.goarch }}
           if [ "${{ matrix.archive }}" = "zip" ]; then
-            zip ${NAME}.zip gix${{ matrix.ext }}
+            zip ${NAME}.zip gixt${{ matrix.ext }}
           else
-            tar -czf ${NAME}.tar.gz gix${{ matrix.ext }}
+            tar -czf ${NAME}.tar.gz gixt${{ matrix.ext }}
           fi
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: gix-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/gix_*.*
+          name: gixt-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/gixt_*.*
 
   release:
     needs: build
@@ -78,11 +78,11 @@ jobs:
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
-          pattern: gix-*
+          pattern: gixt-*
           merge-multiple: true
           path: dist
 
       - name: Publish release assets
         uses: softprops/action-gh-release@v2
         with:
-          files: dist/gix_*.*
+          files: dist/gixt_*.*

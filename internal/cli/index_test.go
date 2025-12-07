@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/leolaurindo/gix/internal/cache"
-	"github.com/leolaurindo/gix/internal/config"
-	"github.com/leolaurindo/gix/internal/index"
+	"github.com/leolaurindo/gixt/internal/cache"
+	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/index"
 )
 
 func TestGatherListRowsPrefersDescriptionOverrides(t *testing.T) {
