@@ -75,6 +75,7 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - Resolution: `--ref <sha>`, `--user-lookup/-u`, `--user-pages/-p <n>`, `--desc-lookup`
 - Caching: `--no-cache`, `--update`, `--cache-dir <path>`, `--clear-cache`, `--update-index` (refresh existing index entries before running)
 - Manifests/inspection: `--manifest <file>`, `--print-cmd`, `--dry-run`, `--view`, `--verbose`
+- Safety: `--ignore-manifest` to skip a manifest and fall back to shebang/extension resolution
 - Execution: `--isolate`, `--cwd/--here`, `--timeout <duration>`
 - Trust: `--yes/-y`, `--trust-always`, `--trust-all`
 
@@ -97,6 +98,8 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gix manifest --upload --gist <id|name>`: upload an existing local manifest file (no create/edit), refreshing cache/index on success.
 - `gix manifest --view --gist <id|name> [--name <file>]`: fetch and print the manifest JSON from a gist without writing locally (defaults to `gix.json`).
 - `gix index-description add <id|name> <desc> | remove <id|name> | list`: manage local-only description overrides used by `describe`/`list` and resolution with `--desc-lookup`.
+- `gix clone <id|name> [--dir <path>]`: clone a gist into a local directory (wraps `gh gist clone`).
+- `gix fork <id|name> [--public] [--description <desc>]`: copy a gist into a new user-owned gist (private by default), reusing files and optional description override.
 - `gix check-updates [--json]`: compare the current binary against the latest GitHub release and print copy/paste download/replace commands for your platform (does not self update, but includes platform-specific instructions for easy copy/paste).
 
 ## Manifest example

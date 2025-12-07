@@ -23,6 +23,7 @@ gix <gist-name> [gist-args...]
 - Inspect what will run with `--view` and `--dry-run`.
 - Implicit resolver for commands: [manifest](docs/manifest-guide.md), shebang, or extension map.
 - `gix manifest` scaffolds/edits/uploads/views `gix.json` (with details/version/docstring) and keeps cache/index in sync.
+- `gix clone` and `gix fork` help bring gists locally or copy them to your own account.
 - Anything after -- is passed verbatim to the gist (needed when gist args start with -/--).
 - Relative paths are rebased to your original shell CWD so they still point to the same files if gix runs in an isolated workdir.
 

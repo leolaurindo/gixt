@@ -29,16 +29,15 @@ func LoadRunManifest(path string) (RunManifest, error) {
 
 func LoadRunManifestBytes(data []byte) (RunManifest, error) {
 	var m RunManifest
-	if err := json.Unmarshal(data, &m); err != nil {
+	dec := json.NewDecoder(strings.NewReader(string(data)))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&m); err != nil {
 		return RunManifest{}, fmt.Errorf("parse run manifest: %w", err)
 	}
-	if m.Env == nil {
-		m.Env = map[string]string{}
+	if err := validateRunManifest(m); err != nil {
+		return RunManifest{}, err
 	}
-	if strings.TrimSpace(m.Details) == "" {
-		m.Details = DefaultDetails
-	}
-	return m, nil
+	return normalizeRunManifest(m), nil
 }
 
 func BuildCommand(dir string, manifestPath string, files []string, userArgs []string, execDir string) ([]string, map[string]string, string, error) {
@@ -176,4 +175,45 @@ func rebaseRunToDir(run string, dir string) string {
 		}
 	}
 	return strings.Join(parts, " ")
+}
+
+func validateRunManifest(m RunManifest) error {
+	run := strings.TrimSpace(m.Run)
+	if run == "" {
+		return fmt.Errorf("run manifest has empty run field")
+	}
+	if strings.ContainsAny(run, "\r\n") {
+		return fmt.Errorf("run manifest run field must not contain newlines")
+	}
+	if len(run) > 4096 {
+		return fmt.Errorf("run manifest run field too long")
+	}
+	for k := range m.Env {
+		if strings.TrimSpace(k) == "" {
+			return fmt.Errorf("run manifest env contains empty key")
+		}
+		if len(k) > 256 {
+			return fmt.Errorf("run manifest env key too long: %s", k)
+		}
+		if strings.ContainsAny(k, "\r\n") {
+			return fmt.Errorf("run manifest env key contains newline: %s", k)
+		}
+	}
+	if len(strings.TrimSpace(m.Details)) > 4096 {
+		return fmt.Errorf("run manifest details too long")
+	}
+	if len(strings.TrimSpace(m.Version)) > 256 {
+		return fmt.Errorf("run manifest version too long")
+	}
+	return nil
+}
+
+func normalizeRunManifest(m RunManifest) RunManifest {
+	if m.Env == nil {
+		m.Env = map[string]string{}
+	}
+	if strings.TrimSpace(m.Details) == "" {
+		m.Details = DefaultDetails
+	}
+	return m
 }

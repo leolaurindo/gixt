@@ -18,26 +18,27 @@ import (
 )
 
 type runOptions struct {
-	ref          string
-	noCache      bool
-	update       bool
-	updateIndex  bool
-	cacheDir     string
-	manifestFile string
-	printCmd     bool
-	dryRun       bool
-	view         bool
-	clearCache   bool
-	verbose      bool
-	userLookup   bool
-	descLookup   bool
-	userPages    int
-	isolate      bool
-	cwd          bool
-	timeout      time.Duration
-	yes          bool
-	trustAlways  bool
-	trustAll     bool
+	ref            string
+	noCache        bool
+	update         bool
+	updateIndex    bool
+	cacheDir       string
+	manifestFile   string
+	printCmd       bool
+	dryRun         bool
+	view           bool
+	clearCache     bool
+	verbose        bool
+	userLookup     bool
+	descLookup     bool
+	userPages      int
+	isolate        bool
+	cwd            bool
+	timeout        time.Duration
+	yes            bool
+	trustAlways    bool
+	trustAll       bool
+	ignoreManifest bool
 }
 
 var errViewAborted = errors.New("aborted after view")
@@ -215,6 +216,14 @@ func runWithOptions(ctx context.Context, opts runOptions, identifier string, for
 		fmt.Printf("working dir: %s (cache: %v)\n", workDir, usedCache)
 	}
 
+	if opts.ignoreManifest && opts.verbose {
+		fmt.Printf("%signoring manifest for this run (flag set)%s\n", clrWarn, clrReset)
+	}
+	manifestFile := opts.manifestFile
+	if opts.ignoreManifest {
+		manifestFile = ""
+	}
+
 	if opts.view {
 		if err := viewFiles(manifest, workDir); err != nil && !errors.Is(err, errViewAborted) {
 			return err
@@ -237,11 +246,14 @@ func runWithOptions(ctx context.Context, opts runOptions, identifier string, for
 	}
 
 	resolvedArgs := resolveUserArgs(forwarded, originalCWD)
-	cmd, envAdd, reason, err := runner.BuildCommand(workDir, opts.manifestFile, files, resolvedArgs, execDir)
+	cmd, envAdd, reason, err := runner.BuildCommand(workDir, manifestFile, files, resolvedArgs, execDir)
 	if err != nil {
 		return err
 	}
 	if opts.printCmd || opts.dryRun {
+		if opts.ignoreManifest {
+			reason = reason + " (manifest ignored)"
+		}
 		fmt.Printf("command (%s): %s\n", reason, strings.Join(cmd, " "))
 	}
 	if opts.dryRun {

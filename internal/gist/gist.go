@@ -151,6 +151,46 @@ func UpdateFiles(ctx context.Context, id string, files map[string]string) (Gist,
 	return g, nil
 }
 
+func Create(ctx context.Context, files map[string]string, description string, public bool) (Gist, error) {
+	type filePayload struct {
+		Content string `json:"content"`
+	}
+	payload := struct {
+		Files       map[string]filePayload `json:"files"`
+		Description string                 `json:"description,omitempty"`
+		Public      bool                   `json:"public"`
+	}{
+		Files:  map[string]filePayload{},
+		Public: public,
+	}
+	for name, content := range files {
+		payload.Files[name] = filePayload{Content: content}
+	}
+	payload.Description = description
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return Gist{}, fmt.Errorf("encode gist payload: %w", err)
+	}
+	cmd := exec.CommandContext(ctx, "gh", "api", "-X", "POST", "/gists", "--input", "-")
+	cmd.Stdin = bytes.NewReader(body)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return Gist{}, fmt.Errorf("gh api create failed: %v: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	var g Gist
+	if err := json.Unmarshal(out, &g); err != nil {
+		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	}
+	g.Raw = map[string]any{}
+	if err := json.Unmarshal(out, &g.Raw); err != nil {
+		// ignore secondary parse failure
+	}
+	return g, nil
+}
+
 func List(ctx context.Context, perPage, maxPages int) ([]ListItem, error) {
 	if perPage <= 0 {
 		perPage = 50

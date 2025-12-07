@@ -3,6 +3,7 @@ package tests
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/leolaurindo/gix/internal/runner"
@@ -59,6 +60,31 @@ func TestBuildCommandUsesManifestWhenPresent(t *testing.T) {
 	}
 	if cmd[len(cmd)-1] != "ARG" {
 		t.Fatalf("expected forwarded arg, got %v", cmd)
+	}
+}
+
+func TestBuildCommandRebasesManifestRunWhenExecDirDiffers(t *testing.T) {
+	dir := t.TempDir()
+	other := t.TempDir()
+	script := filepath.Join(dir, "tool.py")
+	if err := os.WriteFile(script, []byte("print('hi')"), 0o644); err != nil {
+		t.Fatalf("write script: %v", err)
+	}
+	manifest := `{"run":"python tool.py"}`
+	if err := os.WriteFile(filepath.Join(dir, "gix.json"), []byte(manifest), 0o644); err != nil {
+		t.Fatalf("write manifest: %v", err)
+	}
+
+	cmd, _, reason, err := runner.BuildCommand(dir, "gix.json", []string{"tool.py"}, nil, other)
+	if err != nil {
+		t.Fatalf("BuildCommand error: %v", err)
+	}
+	if reason != "manifest" {
+		t.Fatalf("expected manifest reason, got %q", reason)
+	}
+	joined := strings.Join(cmd, " ")
+	if !strings.Contains(joined, script) {
+		t.Fatalf("expected rebased script path in command, got %v", cmd)
 	}
 }
 

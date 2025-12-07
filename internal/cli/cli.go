@@ -215,6 +215,35 @@ func newApp() *ucli.App {
 				},
 			},
 			{
+				Name:      "clone",
+				Usage:     "clone a gist into a local directory",
+				ArgsUsage: "<gist-id|url|alias|name|owner/name>",
+				Flags: []ucli.Flag{
+					&ucli.StringFlag{Name: "dir", Usage: "target directory (default: gist id)"},
+				},
+				Action: func(c *ucli.Context) error {
+					if c.Args().Len() == 0 {
+						return errors.New("usage: gix clone <gist-id|url|alias|name|owner/name> [--dir <path>]")
+					}
+					return handleClone(c.Context, c.Args().First(), c.String("dir"))
+				},
+			},
+			{
+				Name:      "fork",
+				Usage:     "copy a gist to a new user-owned gist",
+				ArgsUsage: "<gist-id|url|alias|name|owner/name>",
+				Flags: []ucli.Flag{
+					&ucli.BoolFlag{Name: "public", Usage: "create fork as public (default private)"},
+					&ucli.StringFlag{Name: "description", Usage: "description for new gist"},
+				},
+				Action: func(c *ucli.Context) error {
+					if c.Args().Len() == 0 {
+						return errors.New("usage: gix fork <gist-id|url|alias|name|owner/name> [--public] [--description <desc>]")
+					}
+					return handleFork(c.Context, c.Args().First(), c.Bool("public"), c.String("description"))
+				},
+			},
+			{
 				Name:      "manifest",
 				Usage:     "create, edit, or upload gix manifest files",
 				ArgsUsage: "",
@@ -290,6 +319,7 @@ func runAction(c *ucli.Context, args []string) error {
 		yes:          c.Bool("yes"),
 		trustAlways:  c.Bool("trust-always"),
 		trustAll:     c.Bool("trust-all"),
+		ignoreManifest: c.Bool("ignore-manifest"),
 	}
 
 	opts.userPages = normalizeUserPages(opts.userPages)
@@ -321,6 +351,7 @@ func runFlags() []ucli.Flag {
 		&ucli.BoolFlag{Name: "yes", Aliases: []string{"y"}, Usage: "skip trust prompt"},
 		&ucli.BoolFlag{Name: "trust-always", Usage: "trust this gist permanently"},
 		&ucli.BoolFlag{Name: "trust-all", Usage: "trust all gists permanently"},
+		&ucli.BoolFlag{Name: "ignore-manifest", Usage: "skip manifest for this run"},
 	}
 }
 
