@@ -16,7 +16,6 @@ import (
 	"github.com/leolaurindo/gixt/internal/config"
 	"github.com/leolaurindo/gixt/internal/gist"
 	"github.com/leolaurindo/gixt/internal/index"
-	"github.com/leolaurindo/gixt/internal/indexdesc"
 )
 
 type listRow struct {
@@ -166,9 +165,19 @@ func handleList(ctx context.Context, cacheOnly bool, mine bool) error {
 		return err
 	}
 	aliasesMap, _ := alias.Load(paths.AliasFile)
+	idx, _ := index.Load(paths.IndexFile)
 	aliasByID := map[string][]string{}
-	for name, id := range aliasesMap {
-		aliasByID[id] = append(aliasByID[id], name)
+	for name, target := range aliasesMap {
+		id := resolveAliasTarget(target, idx)
+		if id == "" {
+			raw := gist.ExtractID(target)
+			if gist.IsLikelyGistID(raw) {
+				id = raw
+			}
+		}
+		if id != "" {
+			aliasByID[keyForID(id)] = append(aliasByID[keyForID(id)], name)
+		}
 	}
 
 	currentUser := ""
@@ -247,14 +256,11 @@ func handleIndexOwner(ctx context.Context, owner string) error {
 
 func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRow, error) {
 	rows := map[string]listRow{}
-	overrides, _ := indexdesc.Load(paths.IndexDescFile)
 
 	idx, _ := index.Load(paths.IndexFile)
 	for _, e := range idx.Entries {
-		if v, ok := overrides[e.ID]; ok {
-			e.Description = indexdesc.Normalize(v)
-		}
-		rows[e.ID] = listRow{
+		key := keyForID(e.ID)
+		rows[key] = listRow{
 			ID:          e.ID,
 			Owner:       e.Owner,
 			Description: strings.TrimSpace(e.Description),
@@ -271,6 +277,7 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 			continue
 		}
 		gistID := e.Name()
+		key := keyForID(gistID)
 		shaEntries, err := os.ReadDir(filepath.Join(paths.CacheDir, gistID))
 		if err != nil {
 			continue
@@ -298,12 +305,9 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 		if latest.GistID == "" {
 			continue
 		}
-		existing, ok := rows[gistID]
+		existing, ok := rows[key]
 		if !ok || !existing.Cached {
-			if v, ok := overrides[gistID]; ok {
-				latest.Description = indexdesc.Normalize(v)
-			}
-			rows[gistID] = listRow{
+			rows[key] = listRow{
 				ID:          latest.GistID,
 				Owner:       latest.Owner,
 				Description: strings.TrimSpace(latest.Description),
@@ -321,13 +325,10 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 			if latest.Description != "" {
 				existing.Description = strings.TrimSpace(latest.Description)
 			}
-			if v, ok := overrides[gistID]; ok {
-				existing.Description = indexdesc.Normalize(v)
-			}
 			if latest.Owner != "" {
 				existing.Owner = latest.Owner
 			}
-			rows[gistID] = existing
+			rows[key] = existing
 		}
 	}
 
@@ -339,6 +340,69 @@ func gatherListRows(paths config.Paths, aliasByID map[string][]string) ([]listRo
 		out = append(out, r)
 	}
 	return out, nil
+}
+
+func resolveAliasTarget(target string, idx index.Index) string {
+	id := gist.ExtractID(target)
+	if gist.IsLikelyGistID(id) {
+		return id
+	}
+	if len(idx.Entries) == 0 {
+		return ""
+	}
+
+	if strings.Contains(target, "/") && !strings.Contains(target, "://") {
+		parts := strings.SplitN(target, "/", 2)
+		ownerPart := strings.ToLower(parts[0])
+		namePart := strings.ToLower(strings.TrimSpace(parts[1]))
+		var matches []string
+		for _, e := range idx.Entries {
+			if strings.ToLower(e.Owner) != ownerPart {
+				continue
+			}
+			desc := strings.ToLower(strings.TrimSpace(e.Description))
+			if desc == namePart {
+				matches = append(matches, e.ID)
+				continue
+			}
+			for _, f := range e.Filenames {
+				base := strings.ToLower(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)))
+				if base == namePart {
+					matches = append(matches, e.ID)
+					break
+				}
+			}
+		}
+		if len(matches) == 1 {
+			return matches[0]
+		}
+		return ""
+	}
+
+	nameLower := strings.ToLower(strings.TrimSpace(target))
+	var matches []string
+	for _, e := range idx.Entries {
+		desc := strings.ToLower(strings.TrimSpace(e.Description))
+		if desc == nameLower {
+			matches = append(matches, e.ID)
+			continue
+		}
+		for _, f := range e.Filenames {
+			base := strings.ToLower(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)))
+			if base == nameLower {
+				matches = append(matches, e.ID)
+				break
+			}
+		}
+	}
+	if len(matches) == 1 {
+		return matches[0]
+	}
+	return ""
+}
+
+func keyForID(id string) string {
+	return strings.ToLower(strings.TrimSpace(id))
 }
 
 func sourceLabel(cached, indexed bool) string {
@@ -369,7 +433,7 @@ func printListTable(rows []listRow, aliasByID map[string][]string) {
 	fmt.Fprintln(tw, "--\t------\t-----\t-----\t-------\t-----------")
 	for _, r := range rows {
 		files := strings.Join(r.Files, ",")
-		aliases := strings.Join(aliasByID[r.ID], ",")
+		aliases := strings.Join(aliasByID[keyForID(r.ID)], ",")
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\t%s\n",
 			trimCell(cache.Shorten(r.ID), idMax),
 			trimCell(r.Source, sourceMax),

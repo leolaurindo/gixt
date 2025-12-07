@@ -13,7 +13,6 @@ import (
 	"github.com/leolaurindo/gixt/internal/cache"
 	"github.com/leolaurindo/gixt/internal/gist"
 	"github.com/leolaurindo/gixt/internal/index"
-	"github.com/leolaurindo/gixt/internal/indexdesc"
 	"github.com/leolaurindo/gixt/internal/runner"
 )
 
@@ -28,7 +27,6 @@ func handleDescribe(ctx context.Context, input string) error {
 		return err
 	}
 
-	overrides, _ := indexdesc.Load(paths.IndexDescFile)
 	aliases, _ := alias.Load(paths.AliasFile)
 	gistID, owner, _, err := resolveIdentifier(ctx, target, aliases, paths, false, false, normalizeUserPages(0))
 	if err != nil {
@@ -47,16 +45,8 @@ func handleDescribe(ctx context.Context, input string) error {
 				if owner == "" {
 					owner = e.Owner
 				}
-				if v, ok := overrides[e.ID]; ok {
-					desc = indexdesc.Normalize(v)
-				}
 				break
 			}
-		}
-	}
-	if desc == "" {
-		if v, ok := overrides[gistID]; ok {
-			desc = indexdesc.Normalize(v)
 		}
 	}
 

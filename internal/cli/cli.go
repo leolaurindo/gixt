@@ -92,6 +92,27 @@ func newApp() *ucli.App {
 				},
 			},
 			{
+				Name:  "remove",
+				Usage: "remove specific gists from cache and/or index",
+				Flags: []ucli.Flag{
+					&ucli.StringSliceFlag{Name: "cache", Usage: "remove these gists from cache (id|name|owner/name)"},
+					&ucli.StringSliceFlag{Name: "index", Usage: "remove these gists from index (id|name|owner/name)"},
+					&ucli.StringSliceFlag{Name: "cache-index", Usage: "remove these gists from both cache and index (id|name|owner/name)"},
+					&ucli.StringSliceFlag{Name: "owner", Usage: "remove all cached/indexed gists for these owners"},
+					&ucli.StringFlag{Name: "cache-dir", Usage: "override cache dir"},
+				},
+				Action: func(c *ucli.Context) error {
+					return handleRemove(
+						c.Context,
+						c.StringSlice("cache"),
+						c.StringSlice("index"),
+						c.StringSlice("cache-index"),
+						c.StringSlice("owner"),
+						c.String("cache-dir"),
+					)
+				},
+			},
+			{
 				Name:  "list",
 				Usage: "list indexed and cached gists",
 				Flags: []ucli.Flag{
@@ -298,14 +319,6 @@ func newApp() *ucli.App {
 						return err
 					}
 					return handleManifest(c.Context, opts)
-				},
-			},
-			{
-				Name:      "index-description",
-				Usage:     "manage local description overrides for indexed gists",
-				ArgsUsage: "list | add <id|name> <desc> | remove <id|name>",
-				Action: func(c *ucli.Context) error {
-					return handleDescOverride(c.Context, c.Args().Slice())
 				},
 			},
 		},

@@ -97,7 +97,6 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 - `gixt manifest --create|--edit --upload --gist <id|name>`: build the manifest in-memory and upload directly to a user-owned gist (no local write). `--edit --upload` will fetch the existing manifest from the gist when there is no local file. Indexed name or owner/name is allowed; cache/index refresh after upload.
 - `gixt manifest --upload --gist <id|name>`: upload an existing local manifest file (no create/edit), refreshing cache/index on success.
 - `gixt manifest --view --gist <id|name> [--name <file>]`: fetch and print the manifest JSON from a gist without writing locally (defaults to `gixt.json`).
-- `gixt index-description add <id|name> <desc> | remove <id|name> | list`: manage local-only description overrides used by `describe`/`list` and resolution with `--desc-lookup`.
 - `gixt clone <id|name> [--dir <path>]`: clone a gist into a local directory (wraps `gh gist clone`).
 - `gixt fork <id|name> [--public] [--description <desc>]`: copy a gist into a new user-owned gist (private by default), reusing files and optional description override.
 - `gixt set-description --description "<text>" --gist <id|name|owner/name>`: update the description of a user-owned gist without running it.

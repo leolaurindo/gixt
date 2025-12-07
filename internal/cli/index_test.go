@@ -14,7 +14,6 @@ import (
 func TestGatherListRowsPrefersDescriptionOverrides(t *testing.T) {
 	tmp := t.TempDir()
 	idxPath := filepath.Join(tmp, "index.json")
-	overridePath := filepath.Join(tmp, "index_descriptions.json")
 	cacheDir := filepath.Join(tmp, "cache")
 	if err := os.MkdirAll(cacheDir, 0o755); err != nil {
 		t.Fatalf("mkdir cache: %v", err)
@@ -29,14 +28,9 @@ func TestGatherListRowsPrefersDescriptionOverrides(t *testing.T) {
 	if err := index.Save(idxPath, idx); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
-	if err := os.WriteFile(overridePath, []byte(`{"id1":"new desc"}`), 0o644); err != nil {
-		t.Fatalf("write overrides: %v", err)
-	}
-
 	paths := config.Paths{
-		IndexFile:     idxPath,
-		IndexDescFile: overridePath,
-		CacheDir:      cacheDir,
+		IndexFile: idxPath,
+		CacheDir:  cacheDir,
 	}
 	rows, err := gatherListRows(paths, map[string][]string{})
 	if err != nil {
@@ -45,8 +39,8 @@ func TestGatherListRowsPrefersDescriptionOverrides(t *testing.T) {
 	if len(rows) != 1 {
 		t.Fatalf("expected 1 row, got %d", len(rows))
 	}
-	if rows[0].Description != "new desc" {
-		t.Fatalf("expected override description, got %q", rows[0].Description)
+	if rows[0].Description != "old" {
+		t.Fatalf("expected original description, got %q", rows[0].Description)
 	}
 
 	// also ensure cached manifests pick override
@@ -69,7 +63,7 @@ func TestGatherListRowsPrefersDescriptionOverrides(t *testing.T) {
 	if err != nil {
 		t.Fatalf("gather rows with cache: %v", err)
 	}
-	if rows[0].Description != "new desc" {
-		t.Fatalf("expected override description with cache, got %q", rows[0].Description)
+	if rows[0].Description != "cached desc" {
+		t.Fatalf("expected cached description with cache, got %q", rows[0].Description)
 	}
 }
