@@ -36,6 +36,7 @@ Resolution order:
    - `owner/name` -> match owner + filename basename or full filename (extension allowed). Add `--desc-lookup` to also match exact descriptions.
    - bare `name` -> match filename basename or full filename (extension allowed) (or exact description when `--desc-lookup`).
 4. Live `owner/name` lookup with `--user-lookup/-u` (uses `gh api /users/<owner>/gists`, 100 per page, `--user-pages/-p` pages, default 2). Matches filename basenames or full filenames; add `--desc-lookup` for exact descriptions.
+5. Platform preference: when multiple matches share the same basename **and** are all platform-specific shell types, gixt prefers your OS variant (`.bat/.cmd/.ps1` on Windows, `.sh/.bash/.zsh` elsewhere). Mixed platform + neutral extensions (e.g., `.sh` vs `.py`) remain ambiguous—disambiguate with `owner/name.ext` or an alias.
 5. Ambiguities produce an error with counts; otherwise gixt says it could not resolve the identifier and suggests indexing or `-u`.
 
 Descriptions are never used unless `--desc-lookup` is set, and description matching is exact (case-insensitive trim).
@@ -61,7 +62,7 @@ Descriptions are never used unless `--desc-lookup` is set, and description match
 9. Trust decision:
    - Skipped when `--yes` or `--trust-always` is set, when mode is `all`, when the gist ID is already trusted, when the owner is trusted, or when mode=`mine` and the owner matches your `gh` user.
    - Otherwise, you are prompted; entering `v` shows files before deciding. `--trust-always` also stores the gist as trusted after the run.
-10. Command resolution (in order): manifest (`gixt.json` or `--manifest <name>`) with `run` (string, executed via shell) + optional `env`; shebang on the chosen file; extension map (.sh -> sh, .ps1 -> powershell, .bat/.cmd -> cmd /C on Windows, .py -> python, .js -> node, .ts -> npx ts-node, .go -> go run, .rb -> ruby, .pl -> perl, .php -> php). Entrypoint preference: `main.*` then `index.*` then the first file (sorted).
+10. Command resolution (in order): manifest (`gixt.json` or `--manifest <name>`) with `run` (string, executed via shell) + optional `env`; shebang on the chosen file; extension map (.sh -> sh, .ps1 -> powershell, .bat/.cmd -> cmd /C on Windows, .py -> python, .js -> node, .ts -> npx ts-node, .go -> go run, .rb -> ruby, .pl -> perl, .php -> php). Entrypoint preference: `main.*` then `index.*` then the first file (sorted); when a basename has both shell variants (e.g., `test.sh` and `test.bat`), the platform-specific one is chosen automatically.
 11. Execution: runs the resolved command in the exec dir with any extra env from the manifest. `--timeout` cancels long runs.
 
 ## Execution directory modes

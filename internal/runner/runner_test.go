@@ -3,6 +3,7 @@ package runner
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -51,5 +52,19 @@ func TestLoadRunManifestRejectsUnknownField(t *testing.T) {
 	}
 	if _, err := LoadRunManifest(path); err == nil {
 		t.Fatalf("expected error for unknown field")
+	}
+}
+
+func TestSelectFilePrefersPlatformVariant(t *testing.T) {
+	files := []string{"test.sh", "test.bat"}
+	chosen := selectFile(files)
+	if runtime.GOOS == "windows" {
+		if filepath.Base(chosen) != "test.bat" {
+			t.Fatalf("expected windows to prefer .bat, got %s", chosen)
+		}
+	} else {
+		if filepath.Base(chosen) != "test.sh" {
+			t.Fatalf("expected non-windows to prefer .sh, got %s", chosen)
+		}
 	}
 }

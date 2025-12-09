@@ -3,6 +3,7 @@ package cli
 import (
 	"context"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/leolaurindo/gixt/internal/config"
@@ -106,5 +107,57 @@ func TestResolveIdentifierMatchesFullFilename(t *testing.T) {
 	}
 	if !fromIndex || id != "id-js" || owner != "erin" {
 		t.Fatalf("unexpected resolution for basename: id=%s owner=%s fromIndex=%v", id, owner, fromIndex)
+	}
+}
+
+func TestResolveIdentifierPrefersPlatformWhenOnlyPlatformExtensions(t *testing.T) {
+	tmp := t.TempDir()
+	idxPath := filepath.Join(tmp, "index.json")
+	paths := config.Paths{IndexFile: idxPath}
+
+	idx := index.Index{
+		Entries: []index.Entry{
+			{ID: "id-sh", Owner: "oscar", Filenames: []string{"tool.sh"}, Description: "sh tool"},
+			{ID: "id-bat", Owner: "pam", Filenames: []string{"tool.bat"}, Description: "bat tool"},
+		},
+	}
+	if err := index.Save(idxPath, idx); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	id, _, fromIndex, err := resolveIdentifier(context.Background(), "tool", nil, paths, false, false, 1)
+	if err != nil {
+		t.Fatalf("platform preference resolution error: %v", err)
+	}
+	if !fromIndex {
+		t.Fatalf("expected match from index")
+	}
+	isWindows := runtime.GOOS == "windows"
+	want := "id-sh"
+	if isWindows {
+		want = "id-bat"
+	}
+	if id != want {
+		t.Fatalf("unexpected platform preference selection: got %s want %s", id, want)
+	}
+}
+
+func TestResolveIdentifierKeepsAmbiguityWhenMixedPlatformAndNeutral(t *testing.T) {
+	tmp := t.TempDir()
+	idxPath := filepath.Join(tmp, "index.json")
+	paths := config.Paths{IndexFile: idxPath}
+
+	idx := index.Index{
+		Entries: []index.Entry{
+			{ID: "id-sh", Owner: "oscar", Filenames: []string{"tool.sh"}, Description: "sh tool"},
+			{ID: "id-py", Owner: "pam", Filenames: []string{"tool.py"}, Description: "py tool"},
+		},
+	}
+	if err := index.Save(idxPath, idx); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	if _, _, _, err := resolveIdentifier(context.Background(), "tool", nil, paths, false, false, 1); err == nil {
+		t.Fatalf("expected ambiguity when mixed platform + neutral extensions")
 	}
 }

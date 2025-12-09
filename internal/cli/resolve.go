@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"sort"
 	"strings"
 
@@ -44,11 +45,12 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 					}
 				}
 			}
+			matches = preferPlatform(matches, namePart)
 			if len(matches) == 1 {
 				return matches[0].ID, matches[0].Owner, true, nil
 			}
 			if len(matches) > 1 {
-				return "", "", false, fmt.Errorf("owner/name matches multiple gists for %s: %d candidates", ownerPart, len(matches))
+				return "", "", false, fmt.Errorf("owner/name matches multiple gists for %s: %d candidates (try owner/fullname.ext or add an alias)", ownerPart, len(matches))
 			}
 		}
 
@@ -56,6 +58,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 		if descLookup {
 			matches = append(matches, index.LookupDescription(idx, input)...)
 		}
+		matches = preferPlatform(matches, strings.ToLower(strings.TrimSpace(input)))
 		if len(matches) == 1 {
 			return matches[0].ID, matches[0].Owner, true, nil
 		}
@@ -64,7 +67,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 			for _, m := range matches {
 				opts = append(opts, fmt.Sprintf("%s (%s)", m.ID, m.Description))
 			}
-			return "", "", false, fmt.Errorf("friendly name matches multiple gists: %s", strings.Join(opts, "; "))
+			return "", "", false, fmt.Errorf("friendly name matches multiple gists: %s (disambiguate with owner/name, full filename like name.ext, or an alias)", strings.Join(opts, "; "))
 		}
 	}
 
@@ -76,11 +79,12 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 		if err != nil {
 			return "", "", false, err
 		}
+		matches = preferPlatform(matches, namePart)
 		if len(matches) == 1 {
 			return matches[0].ID, matches[0].Owner, false, nil
 		}
 		if len(matches) > 1 {
-			return "", "", false, fmt.Errorf("owner/name matches multiple gists for %s: %d candidates", ownerPart, len(matches))
+			return "", "", false, fmt.Errorf("owner/name matches multiple gists for %s: %d candidates (try owner/fullname.ext or add an alias)", ownerPart, len(matches))
 		}
 	}
 
@@ -148,4 +152,83 @@ func filenameMatches(targetLower string, filename string) bool {
 	base := strings.ToLower(strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
 	full := strings.ToLower(filepath.Base(filename))
 	return targetLower == base || targetLower == full
+}
+
+func preferPlatform(matches []index.Entry, targetLower string) []index.Entry {
+	if len(matches) <= 1 {
+		return matches
+	}
+	allowed := platformAllowedExts()
+	preferred := platformPreferredExts()
+
+	type candidate struct {
+		entry index.Entry
+		exts  []string
+	}
+	var candidates []candidate
+	for _, e := range matches {
+		var matchedExts []string
+		for _, f := range e.Filenames {
+			if filenameMatches(targetLower, f) {
+				matchedExts = append(matchedExts, strings.ToLower(filepath.Ext(f)))
+			}
+		}
+		if len(matchedExts) == 0 {
+			continue
+		}
+		candidates = append(candidates, candidate{entry: e, exts: matchedExts})
+	}
+
+	// If any candidate matches a non-platform extension, skip preference and keep ambiguity.
+	for _, c := range candidates {
+		for _, ext := range c.exts {
+			if !allowed[ext] {
+				return matches
+			}
+		}
+	}
+
+	var preferredEntries []index.Entry
+	seen := map[string]bool{}
+	for _, c := range candidates {
+		for _, ext := range c.exts {
+			if preferred[ext] {
+				if !seen[c.entry.ID] {
+					preferredEntries = append(preferredEntries, c.entry)
+					seen[c.entry.ID] = true
+				}
+				break
+			}
+		}
+	}
+	if len(preferredEntries) == 1 {
+		return preferredEntries
+	}
+	return matches
+}
+
+func platformAllowedExts() map[string]bool {
+	return map[string]bool{
+		".bat":  true,
+		".cmd":  true,
+		".ps1":  true,
+		".sh":   true,
+		".bash": true,
+		".zsh":  true,
+	}
+}
+
+func platformPreferredExts() map[string]bool {
+	if runtime.GOOS == "windows" {
+		return map[string]bool{
+			".bat": true,
+			".cmd": true,
+			".ps1": true,
+		}
+	}
+	return map[string]bool{
+		".sh":   true,
+		".bash": true,
+		".zsh":  true,
+	}
 }
