@@ -67,3 +67,44 @@ func TestResolveIdentifierUsesIndexAndHandlesAmbiguity(t *testing.T) {
 		t.Fatalf("expected error for missing identifier")
 	}
 }
+
+func TestResolveIdentifierMatchesFullFilename(t *testing.T) {
+	tmp := t.TempDir()
+	idxPath := filepath.Join(tmp, "index.json")
+	paths := config.Paths{IndexFile: idxPath}
+
+	idx := index.Index{
+		Entries: []index.Entry{
+			{ID: "id-bat", Owner: "dana", Filenames: []string{"hello-world.bat"}, Description: "bat tool"},
+			{ID: "id-js", Owner: "erin", Filenames: []string{"util.js"}, Description: "js util"},
+		},
+	}
+	if err := index.Save(idxPath, idx); err != nil {
+		t.Fatalf("write index: %v", err)
+	}
+
+	id, owner, fromIndex, err := resolveIdentifier(context.Background(), "hello-world.bat", nil, paths, false, false, 1)
+	if err != nil {
+		t.Fatalf("full filename resolution error: %v", err)
+	}
+	if !fromIndex || id != "id-bat" || owner != "dana" {
+		t.Fatalf("unexpected resolution for full filename: id=%s owner=%s fromIndex=%v", id, owner, fromIndex)
+	}
+
+	id, owner, fromIndex, err = resolveIdentifier(context.Background(), "erin/util.js", nil, paths, false, false, 1)
+	if err != nil {
+		t.Fatalf("owner/full filename resolution error: %v", err)
+	}
+	if !fromIndex || id != "id-js" || owner != "erin" {
+		t.Fatalf("unexpected resolution for owner/full filename: id=%s owner=%s fromIndex=%v", id, owner, fromIndex)
+	}
+
+	// Still resolves without the extension.
+	id, owner, fromIndex, err = resolveIdentifier(context.Background(), "util", nil, paths, false, false, 1)
+	if err != nil {
+		t.Fatalf("basename resolution error: %v", err)
+	}
+	if !fromIndex || id != "id-js" || owner != "erin" {
+		t.Fatalf("unexpected resolution for basename: id=%s owner=%s fromIndex=%v", id, owner, fromIndex)
+	}
+}

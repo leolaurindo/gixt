@@ -38,8 +38,7 @@ func resolveIdentifier(ctx context.Context, input string, aliases map[string]str
 					continue
 				}
 				for _, f := range e.Filenames {
-					base := strings.ToLower(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)))
-					if base == namePart {
+					if filenameMatches(namePart, f) {
 						matches = append(matches, e)
 						break
 					}
@@ -114,8 +113,7 @@ func findOwnerNameLive(ctx context.Context, owner string, nameLower string, page
 			continue
 		}
 		for fname := range it.Files {
-			base := strings.ToLower(strings.TrimSuffix(filepath.Base(fname), filepath.Ext(fname)))
-			if base == nameLower {
+			if filenameMatches(nameLower, fname) {
 				matches = append(matches, index.Entry{
 					ID:          it.ID,
 					Description: it.Description,
@@ -144,4 +142,10 @@ func normalizeUserPages(val int) int {
 		return 2
 	}
 	return val
+}
+
+func filenameMatches(targetLower string, filename string) bool {
+	base := strings.ToLower(strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
+	full := strings.ToLower(filepath.Base(filename))
+	return targetLower == base || targetLower == full
 }

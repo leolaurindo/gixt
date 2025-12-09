@@ -25,7 +25,7 @@ Accepted forms:
 
 - Alias (`gixt alias add cool <id>`)
 - Gist ID or URL (last path segment is extracted)
-- Friendly filename from the index (basename only, extension stripped)
+ - Friendly filename from the index (basename or full filename with extension)
 - `owner/name`
 
 Resolution order:
@@ -33,9 +33,9 @@ Resolution order:
 1. Alias map.
 2. Looks like a gist ID/URL.
 3. Index lookups:
-   - `owner/name` -> match owner + filename basename. Add `--desc-lookup` to also match exact descriptions.
-   - bare `name` -> match filename basename (or exact description when `--desc-lookup`).
-4. Live `owner/name` lookup with `--user-lookup/-u` (uses `gh api /users/<owner>/gists`, 100 per page, `--user-pages/-p` pages, default 2). Matches filename basenames; add `--desc-lookup` for exact descriptions.
+   - `owner/name` -> match owner + filename basename or full filename (extension allowed). Add `--desc-lookup` to also match exact descriptions.
+   - bare `name` -> match filename basename or full filename (extension allowed) (or exact description when `--desc-lookup`).
+4. Live `owner/name` lookup with `--user-lookup/-u` (uses `gh api /users/<owner>/gists`, 100 per page, `--user-pages/-p` pages, default 2). Matches filename basenames or full filenames; add `--desc-lookup` for exact descriptions.
 5. Ambiguities produce an error with counts; otherwise gixt says it could not resolve the identifier and suggests indexing or `-u`.
 
 Descriptions are never used unless `--desc-lookup` is set, and description matching is exact (case-insensitive trim).

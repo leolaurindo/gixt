@@ -49,27 +49,32 @@ func Save(path string, idx Index) error {
 	return nil
 }
 
-// Lookup matches by filename base (case-insensitive, sans extension) or exact description (case-insensitive).
+// Lookup matches by filename base (case-insensitive, sans extension), full filename (case-insensitive, with extension), or exact description (case-insensitive).
 func Lookup(idx Index, name string) []Entry {
 	matches := LookupName(idx, name)
 	matches = append(matches, LookupDescription(idx, name)...)
 	return matches
 }
 
-// LookupName matches by filename base (case-insensitive, sans extension).
+// LookupName matches by filename base (case-insensitive, sans extension) or the full filename (case-insensitive, with extension).
 func LookupName(idx Index, name string) []Entry {
-	cleaned := strings.TrimSpace(strings.ToLower(name))
-	if cleaned == "" {
+	target := strings.TrimSpace(strings.ToLower(name))
+	if target == "" {
 		return nil
 	}
 	var matches []Entry
 	for _, e := range idx.Entries {
+		found := false
 		for _, f := range e.Filenames {
 			base := strings.ToLower(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)))
-			if base == cleaned {
-				matches = append(matches, e)
+			full := strings.ToLower(filepath.Base(f))
+			if target == base || target == full {
+				found = true
 				break
 			}
+		}
+		if found {
+			matches = append(matches, e)
 		}
 	}
 	return matches
