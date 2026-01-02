@@ -4,7 +4,9 @@ compile.bat
 compile_with_version.bat
 compile.sh
 .vscode/
-
+TODO.md
+*~
+.*.un~
 # Created by https://www.toptal.com/developers/gitignore/api/go
 # Edit at https://www.toptal.com/developers/gitignore?templates=go
 
