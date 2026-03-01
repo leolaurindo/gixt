@@ -97,7 +97,7 @@ gixt https://gist.github.com/you/1234567890abcdef
 gixt alias add hello 1234567890abcdef
 gixt hello
 
- # index another user's gists
+# index another user's gists
 gixt index-owner <username>
 
 # cache without running
