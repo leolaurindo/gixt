@@ -27,8 +27,10 @@ func BuildCommand(dir string, files []string, userArgs []string, python string) 
 		return append([]string{python, chosenPath}, userArgs...), "python override", nil
 	}
 
-	if cmd, reason, ok := commandFromShebang(chosenPath); ok {
-		return append(cmd, userArgs...), reason, nil
+	if runtime.GOOS != "windows" {
+		if cmd, reason, ok := commandFromShebang(chosenPath); ok {
+			return append(cmd, userArgs...), reason, nil
+		}
 	}
 
 	cmd, reason, err := commandFromExtension(chosenPath)
