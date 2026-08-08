@@ -139,3 +139,56 @@ func TestExtractID(t *testing.T) {
 		}
 	}
 }
+
+func mutationServer(t *testing.T, wantMethod, wantPath string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != wantMethod || r.URL.Path != wantPath {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if got := r.Header.Get("Authorization"); got != "Bearer sekret" {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Write([]byte(gistJSON("new1234567890ab", "https://example.com/raw")))
+	}))
+}
+
+func TestUpdateDescription(t *testing.T) {
+	srv := mutationServer(t, http.MethodPatch, "/gists/abc1234567890")
+	defer srv.Close()
+
+	c := newWithBase(srv.URL, "sekret")
+	g, err := c.UpdateDescription(context.Background(), "abc1234567890", "new desc")
+	if err != nil {
+		t.Fatalf("UpdateDescription error: %v", err)
+	}
+	if g.ID != "new1234567890ab" {
+		t.Fatalf("unexpected id: %s", g.ID)
+	}
+}
+
+func TestCreate(t *testing.T) {
+	srv := mutationServer(t, http.MethodPost, "/gists")
+	defer srv.Close()
+
+	c := newWithBase(srv.URL, "sekret")
+	g, err := c.Create(context.Background(), map[string]string{"a.py": "print(1)"}, "desc", false)
+	if err != nil {
+		t.Fatalf("Create error: %v", err)
+	}
+	if g.ID != "new1234567890ab" {
+		t.Fatalf("unexpected id: %s", g.ID)
+	}
+}
+
+func TestMutationRequiresToken(t *testing.T) {
+	c := newWithBase("http://unused", "")
+	if _, err := c.Create(context.Background(), nil, "", false); err == nil {
+		t.Fatal("expected error when not authenticated")
+	}
+	if _, err := c.UpdateDescription(context.Background(), "abc", "x"); err == nil {
+		t.Fatal("expected error when not authenticated")
+	}
+}
