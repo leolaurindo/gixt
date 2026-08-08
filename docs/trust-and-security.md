@@ -1,51 +1,33 @@
 # Trust Model
 
-This CLI executes code from gists. Trust decisions are stored in `settings.json` under your gixt config directory (see `docs/caching-and-index.md`).
+gixt executes code from gists. Trust is managed with **trust-on-first-use (TOFU) keyed by commit**: an approved gist revision never re-prompts; a new revision does.
 
-Check current trust config:
-```sh
-gixt config-trust --show
+Trust state is stored in `trust.json` under your gixt config directory.
+
+## Rules
+
+1. If the exact commit (`sha`) of the gist you're running was approved before, gixt runs it without prompting.
+2. Gists owned by your authenticated GitHub user are trusted automatically.
+3. Otherwise gixt prompts (owner, description, commit, files). Answering `y` records that commit as trusted.
+4. `-y` / `--yes` skips the prompt for a single run without persisting trust.
+5. If the gist later has a new commit, you are prompted again — the old approval does not carry over.
+
+## Non-interactive runs
+
+When stdin is not a terminal (pipes, scripts, CI), gixt refuses to prompt and exits with:
+
+```
+error: refusing to prompt on non-interactive input; pass -y to run untrusted code
 ```
 
-## Modes and stored trust
+This keeps piped usage safe and predictable: `gixt <target> | sh` never stalls waiting for input.
 
-- Modes (`gixt config-trust --mode <never|mine|all>`):
-  - `never` (default): always prompt unless another rule applies.
-  - `mine`: trust gists owned by your current `gh` user; prompt for others.
-  - `all`: trust everything without prompting.
-- Persistent entries:
-  - Trusted owners: `gixt config-trust --owner <username>` (repeatable).
-    - Remove with `gixt config-trust --remove-owner <username>`.
-  - Trusted gists: `--trust-always` on a run stores that gist ID; you can also manage them with `gixt config-trust --remove-gist <id>` or `--clear-gists`.
-- Global trust flag: `--trust-all` on a run immediately sets mode=all and saves it before continuing. 
-  - **WARNING**: this can be dangerous; use with caution.
-- Non persistent skip: `--yes` or `-y` skips the prompt for that run only.
+## Inspecting before you run
 
+- `gixt run --view <target>` prints the gist files without executing anything.
+- `gixt run --dry-run <target>` shows the exact command gixt would run.
+- `gixt gist show <target>` shows metadata and the file list.
 
-## Checking a gist content and gixt command before running
+## Clearing trust
 
-Use `--view` at the prompt to see all gist files before confirming execution.
-
-The `--dry-run` flag shows what would run without executing it.
-
-
-## Trust check order during a run
-
-1. `--yes/-y` or `--trust-always` flag.
-2. Mode `all` (including when set by `--trust-all`).
-3. Gist ID stored in trusted gists (e.g., from previous `--trust-always`).
-4. Owner stored in trusted owners.
-5. Mode `mine` **and** owner matches your `gh` user.
-6. Otherwise, gixt prompts before execution.
-
-At the prompt, `v`/`view` shows all gist files; any non-yes answer aborts the run. If you ran with `--trust-always`, the gist ID is added to trusted gists after the run.
-
-## Managing trust entries
-
-- Show current config: `gixt config-trust --show`
-- Add trusted owners: `gixt config-trust --owner <login>` (repeatable)
-- Remove entries: `gixt config-trust --remove-owner <login>` and `--remove-gist <id>`
-- Clear subsets: `gixt config-trust --clear-owners` or `--clear-gists`
-- Reset everything: `gixt config-trust --reset` (sets mode=never and clears stored owners/gists)
-
-Trust settings are unaffected by cache/index cleaning.
+There is no per-command trust editor; delete `trust.json` from the config directory to reset all approvals (or remove the entry for a single gist).

@@ -1,52 +1,49 @@
-# Caching and index
+# Caching and known gists
 
 ## Directories and files
 
-- Config dir (stores aliases, index, settings):
-  - Windows: `%APPDATA%\gixt` (e.g. `C:\Users\<you>\AppData\Roaming\gixt`)
+- Config dir (stores known gists, settings, trust, auth):
+  - Windows: `%APPDATA%\gixt`
   - Linux: `~/.config/gixt`
   - macOS: `~/Library/Application Support/gixt`
-  - Files: `aliases.json`, `index.json`, `settings.json`.
-- Cache dir (stores downloaded gist files + `manifest.json` per gist/sha):
+  - Files: `known.json`, `settings.json`, `trust.json`, `auth.json`.
+- Cache dir (stores downloaded gist files + a `meta.json` per gist/revision):
   - Windows: `%LOCALAPPDATA%\gixt`
   - Linux: `~/.cache/gixt`
   - macOS: `~/Library/Caches/gixt`
 
-`--cache-dir` overrides the cache root for `gixt` runs, `gixt register`, `gixt clean-cache`, and `gixt clear-index`.
-
 ## Cache behavior
 
-- Default cache mode is `never`: runs use a temp dir inside the cache root and remove it after execution. Cached gists are untouched.
-- Persist cache by running `gixt config-cache --mode cache`.
-- Per-run controls:
-  - `--no-cache`: force temp/ephemeral even when mode=cache.
-  - `--update`: redownload files even if a manifest and files already exist.
-  - `--clear-cache`: wipe the cache dir before running.
+- Caching is **on by default**. Each run stores the gist's files under `cache/<gist-id>/<sha>`.
+- On every run gixt performs a conditional request: if the gist is unchanged, the server replies `304` and the cached copy is reused with zero file downloads. The ETag is stored in the cache `meta.json`.
+- After a successful run, older revisions of that gist are pruned automatically, so the cache stays at roughly one directory per gist.
+- `--offline` skips the network entirely and runs the cached copy (errors if it isn't cached).
+- `--ref <sha>` runs a specific revision (downloaded on demand).
 - Commands:
-  - `gixt clean-cache [--cache-dir <path>]`: delete the entire cache dir.
-  - `gixt register <gist-id|url> [--ref <sha>] [--cache-dir <path>] [--update]`: download and cache a gist without running it (does not add to the index).
+  - `gixt cache list`: show cached gists and their latest revision.
+  - `gixt cache prune`: manually remove old revisions, keeping the latest per gist.
+  - `gixt cache clear`: delete all cached contents.
 
-## Index behavior
+## Known gists (naming)
 
-- The index lives at `index.json` in the config dir and enables friendly-name lookups.
-- Matching rules: filename basenames (case-insensitive, extension stripped); add `--desc-lookup` to also match exact descriptions.
-- Commands:
-  - `gixt index-owner <owner>`: add all gists for an owner (up to 5 pages of 100) to the index.
-  - `gixt index-mine`: fetch or re-sync all gists for your authenticated user (adds new ones, drops deleted gists).
-  - `gixt update-index`: refresh existing index entries one-by-one via `gh`, skipping/pruning gists that return 404.
-  - `gixt clear-index [--cache-dir <path>]`: delete only the index file.
+`known.json` stores the gists you've chosen to remember, so you can run them by name. An entry holds the gist id, owner, description, filenames, and an optional alias. Name lookup matches the alias or the file basename/full name.
 
-## Listing
+Commands:
 
-`gixt list [--cache|-c] [--mine]` shows cached + indexed gists in one table.
+- `gixt add <id|url|owner/gist> [--as <name>]` — remember a single gist (custom name with `--as`).
+- `gixt add owner <login>` — remember all of an owner's gists (replaces that owner's entries).
+- `gixt remove <target>` — forget a gist.
+- `gixt remove owner <login>` — forget all of an owner's gists.
+- `gixt list` — pretty table of known gists.
+- `gixt list refresh` — re-fetch metadata for each entry, dropping deleted gists.
+- `gixt list clear` — forget everything.
 
-- `Source` column: `cache`, `index`, or `cache+index` depending on where the entry came from.
-- `Aliases` column is derived from `aliases.json` (if present).
-- `--cache` limits to cached entries; `--mine` filters to gists owned by your `gh` user.
+Running a gist does **not** auto-add it to `known.json`; use `gixt run <target> --add` (or `--as <name>`) to remember it, or `gixt add` explicitly.
 
 ## Quick recipes
 
-- Temporary/uvx-style runs (default): do nothing; gixt uses a temp workdir and deletes it after the run.
-- Persistent cache: `gixt config-cache --mode cache` then run normally.
-- Force refresh a cached gist: `gixt <id> --update` (or rerun `gixt register ... --update`).
-- Start friendly-name usage: `gixt index-owner <your-gh-login>` to fill the index, then `gixt update-index` to refresh later.
+- Run offline: `gixt run --offline <name>`.
+- Force the latest revision: just run normally; a changed gist re-downloads and re-prompts.
+- Use your project's venv for a python gist: `gixt run --python .venv/bin/python app.py`.
+- Remember a one-off gist: `gixt run 1234abc --add`, then `gixt 1234abc` by name next time.
+- Custom name for a gist you use often: `gixt add owner/script.py --as myscript`.
