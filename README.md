@@ -6,7 +6,7 @@
 
 </div>
 
-Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases, as well as by ID or URL. With an on-disk cache and a trust-on-first-use model, `gixt` makes it easy and safe to run code snippets from GitHub Gists.
+Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases. `gixt` makes it easy and safe to run code snippets from GitHub Gists.
 
 ```sh
 gixt run <gist-name> [-- <args>]
@@ -14,16 +14,12 @@ gixt run <gist-name> [-- <args>]
 
 ## Features and highlights
 
-- Run any gist by name, ID, URL, or `owner/gist` — no setup needed for one-offs.
+- Run any gist by name, ID, URL, or `owner/gist`. No setup needed for one-offs.
 - Remember gists you use with `gixt add` (or `gixt run --add`) so they get a friendly name.
-- Content-addressed cache, on by default; each gist keeps only its latest revision.
-- Runs in your current directory by default (like `npx`/`uvx`); `--isolate` opts into a sandboxed work dir.
 - Trust-on-first-use per commit: you are prompted once per gist revision, and a changed revision prompts again.
 - Inspect what will run with `--view` and `--dry-run`.
-- Direct GitHub HTTP transport, no `gh` dependency; public gists work without any token.
-- Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated (`gixt <target> | sh` just works).
-- `--offline` runs the cached copy without contacting GitHub; `--ref <sha>` pins a revision.
-- `gixt clone` and `gixt fork` bring gists locally or copy them to your own account.
+- No `gh` dependency; public gists work without any token.
+- Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated. The worse pattern on internet (`gixt --view <target> | sh`) just works.
 
 ## Quick start
 
@@ -75,7 +71,7 @@ gixt auth login
 
 ```sh
 # one-off, never remembered
-gixt leo/hello-world
+gixt leolaurindo/hello-world -y
 
 # run offline from the cache
 gixt run --offline ssh
@@ -84,7 +80,7 @@ gixt run --offline ssh
 gixt run --python .venv/bin/python app.py
 
 # inspect before running
-gixt run --view ssh
+gixt run --view leolaurindo/hello-world
 gixt run --dry-run ssh
 ```
 
@@ -132,8 +128,6 @@ gixt self version | update-check
 
 Contributions are welcome! I will eventually write contribution guidelines, but for now, feel free to open issues or pull requests.
 
-## Motivation
+## Related
 
-This is a small project for educational purposes and personal use. I wanted a simple way to run gists as commands without installing them globally or copying code around. Although possible, it involves some boilerplate. `gixt` is much more ergonomic.
-
-Freely inspired by the user experience `uvx` provides. AI tools were used for boilerplate, documentation, testing, syntax (I am learning golang) and some refactoring, but the design and implementation are mainly my own.
+Freely inspired by the user experience `uvx` and `npx` provide.
