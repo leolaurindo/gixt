@@ -7,51 +7,70 @@ import (
 	"testing"
 )
 
-func TestLoadRunManifestDefaultsDetails(t *testing.T) {
+func TestBuildCommandUsesExtension(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gixt.json")
-	// details omitted, env nil -> should default details and initialize env
-	data := `{"run":"echo hi","version":"1.2.3"}`
-	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	mainPath := filepath.Join(dir, "main.py")
+	if err := os.WriteFile(mainPath, []byte("print('ok')"), 0o644); err != nil {
+		t.Fatalf("write main file: %v", err)
 	}
 
-	m, err := LoadRunManifest(path)
+	cmd, reason, err := BuildCommand(dir, []string{"main.py"}, []string{"--foo"}, "")
 	if err != nil {
-		t.Fatalf("load manifest: %v", err)
+		t.Fatalf("BuildCommand error: %v", err)
 	}
-	if m.Details != DefaultDetails {
-		t.Fatalf("expected default details, got %q", m.Details)
+	if reason == "" || cmd[0] != "python" {
+		t.Fatalf("expected python command, got %v (reason %q)", cmd, reason)
 	}
-	if m.Version != "1.2.3" {
-		t.Fatalf("unexpected version: %q", m.Version)
-	}
-	if m.Env == nil {
-		t.Fatalf("env should be initialized")
+	if got := cmd[len(cmd)-1]; got != "--foo" {
+		t.Fatalf("expected forwarded arg, got %s", got)
 	}
 }
 
-func TestLoadRunManifestRejectsBadRun(t *testing.T) {
+func TestBuildCommandPythonOverride(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gixt.json")
-	data := "{ \"run\": \"echo hi\\nrm -rf /\" }"
-	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	mainPath := filepath.Join(dir, "main.py")
+	if err := os.WriteFile(mainPath, []byte("print('ok')"), 0o644); err != nil {
+		t.Fatalf("write main file: %v", err)
 	}
-	if _, err := LoadRunManifest(path); err == nil {
-		t.Fatalf("expected error for newline in run")
+
+	venv := filepath.Join(dir, ".venv", "bin", "python")
+	cmd, reason, err := BuildCommand(dir, []string{"main.py"}, []string{"--foo"}, venv)
+	if err != nil {
+		t.Fatalf("BuildCommand error: %v", err)
+	}
+	if reason != "python override" || cmd[0] != venv {
+		t.Fatalf("expected python override, got %v (reason %q)", cmd, reason)
+	}
+	if got := cmd[len(cmd)-1]; got != "--foo" {
+		t.Fatalf("expected forwarded arg, got %s", got)
 	}
 }
 
-func TestLoadRunManifestRejectsUnknownField(t *testing.T) {
+func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 	dir := t.TempDir()
-	path := filepath.Join(dir, "gixt.json")
-	data := "{ \"run\": \"echo hi\", \"unexpected\": true }"
-	if err := os.WriteFile(path, []byte(data), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
+	scriptPath := filepath.Join(dir, "script.txt")
+	content := "#!/usr/bin/env bash\necho hi\n"
+	if err := os.WriteFile(scriptPath, []byte(content), 0o755); err != nil {
+		t.Fatalf("write script: %v", err)
 	}
-	if _, err := LoadRunManifest(path); err == nil {
-		t.Fatalf("expected error for unknown field")
+
+	cmd, reason, err := BuildCommand(dir, []string{"script.txt"}, nil, "")
+	if err != nil {
+		t.Fatalf("BuildCommand shebang error: %v", err)
+	}
+	if reason != "shebang" {
+		t.Fatalf("expected shebang reason, got %q", reason)
+	}
+	if cmd[len(cmd)-1] != scriptPath {
+		t.Fatalf("expected script path in command, got %v", cmd)
+	}
+
+	unknownPath := filepath.Join(dir, "weird.xyz")
+	if err := os.WriteFile(unknownPath, []byte("data"), 0o644); err != nil {
+		t.Fatalf("write unknown file: %v", err)
+	}
+	if _, _, err := BuildCommand(dir, []string{"weird.xyz"}, nil, ""); err == nil {
+		t.Fatalf("expected error for unknown extension")
 	}
 }
 

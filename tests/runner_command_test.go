@@ -3,20 +3,19 @@ package tests
 import (
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/leolaurindo/gixt/internal/runner"
 )
 
-func TestBuildCommandPrefersExtension(t *testing.T) {
+func TestBuildCommandUsesExtension(t *testing.T) {
 	dir := t.TempDir()
 	mainPath := filepath.Join(dir, "main.py")
 	if err := os.WriteFile(mainPath, []byte("print('ok')"), 0o644); err != nil {
 		t.Fatalf("write main file: %v", err)
 	}
 
-	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"main.py"}, []string{"--foo"}, dir)
+	cmd, reason, err := runner.BuildCommand(dir, []string{"main.py"}, []string{"--foo"}, "")
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -28,63 +27,23 @@ func TestBuildCommandPrefersExtension(t *testing.T) {
 	}
 }
 
-func TestBuildCommandUsesManifestWhenPresent(t *testing.T) {
+func TestBuildCommandPythonOverride(t *testing.T) {
 	dir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(dir, "main.sh"), []byte("echo hi"), 0o644); err != nil {
+	mainPath := filepath.Join(dir, "main.py")
+	if err := os.WriteFile(mainPath, []byte("print('ok')"), 0o644); err != nil {
 		t.Fatalf("write main file: %v", err)
 	}
-	manifest := `{"run":"echo hi","env":{"FOO":"BAR"}}`
-	if err := os.WriteFile(filepath.Join(dir, "gixt.json"), []byte(manifest), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
-	}
 
-	cmd, env, reason, err := runner.BuildCommand(dir, "gixt.json", []string{"main.sh"}, []string{"ARG"}, dir)
+	venv := filepath.Join(dir, ".venv", "bin", "python")
+	cmd, reason, err := runner.BuildCommand(dir, []string{"main.py"}, []string{"ARG"}, venv)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
-	if reason != "manifest" {
-		t.Fatalf("expected manifest reason, got %q", reason)
-	}
-	foundRun := false
-	for _, c := range cmd {
-		if c == "echo hi" {
-			foundRun = true
-			break
-		}
-	}
-	if !foundRun {
-		t.Fatalf("expected manifest run command in %v", cmd)
-	}
-	if env["FOO"] != "BAR" {
-		t.Fatalf("expected env from manifest, got %v", env)
+	if reason != "python override" || cmd[0] != venv {
+		t.Fatalf("expected python override, got %v (reason %q)", cmd, reason)
 	}
 	if cmd[len(cmd)-1] != "ARG" {
 		t.Fatalf("expected forwarded arg, got %v", cmd)
-	}
-}
-
-func TestBuildCommandRebasesManifestRunWhenExecDirDiffers(t *testing.T) {
-	dir := t.TempDir()
-	other := t.TempDir()
-	script := filepath.Join(dir, "tool.py")
-	if err := os.WriteFile(script, []byte("print('hi')"), 0o644); err != nil {
-		t.Fatalf("write script: %v", err)
-	}
-	manifest := `{"run":"python tool.py"}`
-	if err := os.WriteFile(filepath.Join(dir, "gixt.json"), []byte(manifest), 0o644); err != nil {
-		t.Fatalf("write manifest: %v", err)
-	}
-
-	cmd, _, reason, err := runner.BuildCommand(dir, "gixt.json", []string{"tool.py"}, nil, other)
-	if err != nil {
-		t.Fatalf("BuildCommand error: %v", err)
-	}
-	if reason != "manifest" {
-		t.Fatalf("expected manifest reason, got %q", reason)
-	}
-	joined := strings.Join(cmd, " ")
-	if !strings.Contains(joined, script) {
-		t.Fatalf("expected rebased script path in command, got %v", cmd)
 	}
 }
 
@@ -96,7 +55,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 
-	cmd, _, reason, err := runner.BuildCommand(dir, "", []string{"script.txt"}, nil, dir)
+	cmd, reason, err := runner.BuildCommand(dir, []string{"script.txt"}, nil, "")
 	if err != nil {
 		t.Fatalf("BuildCommand shebang error: %v", err)
 	}
@@ -111,7 +70,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 	if err := os.WriteFile(unknownPath, []byte("data"), 0o644); err != nil {
 		t.Fatalf("write unknown file: %v", err)
 	}
-	if _, _, _, err := runner.BuildCommand(dir, "", []string{"weird.xyz"}, nil, dir); err == nil {
+	if _, _, err := runner.BuildCommand(dir, []string{"weird.xyz"}, nil, ""); err == nil {
 		t.Fatalf("expected error for unknown extension")
 	}
 }

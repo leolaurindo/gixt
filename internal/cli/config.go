@@ -1,138 +1,113 @@
 package cli
 
 import (
-	"context"
+	"errors"
 	"fmt"
-	"sort"
+	"strconv"
 	"strings"
+
+	"github.com/spf13/cobra"
 
 	"github.com/leolaurindo/gixt/internal/config"
 )
 
-func handleConfigTrust(_ context.Context, mode string, owners []string, removeOwners []string, removeGists []string, clearOwners, clearGists, reset, show bool) error {
-	paths, settings, err := ensurePathsAndSettings("")
+func newConfigCmd() *cobra.Command {
+	c := &cobra.Command{
+		Use:   "config",
+		Short: "manage gixt settings",
+		Args:  cobra.NoArgs,
+	}
+	c.AddCommand(
+		&cobra.Command{
+			Use:   "get [key]",
+			Short: "print a setting (default: all)",
+			Args:  cobra.MaximumNArgs(1),
+			RunE:  configGet,
+		},
+		&cobra.Command{
+			Use:   "set <key> <value>",
+			Short: "set a setting",
+			Args:  cobra.ExactArgs(2),
+			RunE:  configSet,
+		},
+		&cobra.Command{
+			Use:   "unset <key>",
+			Short: "reset a setting to its default",
+			Args:  cobra.ExactArgs(1),
+			RunE:  configUnset,
+		},
+	)
+	return c
+}
+
+func configGet(cmd *cobra.Command, args []string) error {
+	paths, err := ensurePaths("")
 	if err != nil {
 		return err
 	}
-
-	if reset {
-		settings.Mode = config.TrustNever
-		settings.TrustedOwners = map[string]bool{}
-		settings.TrustedGists = map[string]bool{}
-		fmt.Printf("%scleared stored trust decisions (mode=never).%s\n", clrWarn, clrReset)
-	}
-	if settings.TrustedOwners == nil {
-		settings.TrustedOwners = map[string]bool{}
-	}
-	if settings.TrustedGists == nil {
-		settings.TrustedGists = map[string]bool{}
-	}
-
-	if clearOwners {
-		settings.TrustedOwners = map[string]bool{}
-	}
-	if clearGists {
-		settings.TrustedGists = map[string]bool{}
-	}
-	for _, o := range owners {
-		settings.TrustedOwners[strings.ToLower(o)] = true
-	}
-	for _, o := range removeOwners {
-		delete(settings.TrustedOwners, strings.ToLower(o))
-	}
-	for _, g := range removeGists {
-		delete(settings.TrustedGists, strings.ToLower(g))
-	}
-	if mode != "" {
-		switch strings.ToLower(mode) {
-		case string(config.TrustNever):
-			settings.Mode = config.TrustNever
-		case string(config.TrustMine):
-			settings.Mode = config.TrustMine
-		case string(config.TrustAll):
-			settings.Mode = config.TrustAll
-		default:
-			return fmt.Errorf("unknown mode %s (expected never|mine|all)", mode)
-		}
-	}
-	if err := config.SaveSettings(paths.Settings, settings); err != nil {
+	s, err := config.LoadSettings(paths.Settings)
+	if err != nil {
 		return err
 	}
-
-	if show || mode != "" || len(owners) > 0 || len(removeOwners) > 0 || len(removeGists) > 0 || clearOwners || clearGists || reset {
-		fmt.Println(colorize("Trust configuration:", clrTitle))
-		fmt.Printf("  mode: %s\n", settings.Mode)
-		if len(settings.TrustedOwners) > 0 {
-			var list []string
-			for o := range settings.TrustedOwners {
-				list = append(list, o)
-			}
-			sort.Strings(list)
-			fmt.Printf("  trusted owners: %s\n", strings.Join(list, ", "))
-		} else {
-			fmt.Println("  trusted owners: (none)")
-		}
-		if len(settings.TrustedGists) > 0 {
-			fmt.Printf("  trusted gists: %d stored\n", len(settings.TrustedGists))
-		} else {
-			fmt.Println("  trusted gists: (none)")
-		}
+	if len(args) == 0 {
+		fmt.Printf("trust.mine\t%v\n", s.Mine)
+		return nil
+	}
+	switch args[0] {
+	case "trust.mine":
+		fmt.Printf("%v\n", s.Mine)
+	default:
+		return fmt.Errorf("unknown setting %q (known: trust.mine)", args[0])
 	}
 	return nil
 }
 
-func handleConfigCache(mode string, show bool) error {
-	paths, settings, err := ensurePathsAndSettings("")
+func configSet(cmd *cobra.Command, args []string) error {
+	key, value := args[0], args[1]
+	paths, err := ensurePaths("")
 	if err != nil {
 		return err
 	}
-
-	if mode != "" {
-		switch strings.ToLower(mode) {
-		case string(config.CacheModeCache):
-			settings.CacheMode = config.CacheModeCache
-		case string(config.CacheModeDefault):
-			settings.CacheMode = config.CacheModeDefault
-		default:
-			return fmt.Errorf("unknown cache mode %s (expected cache|never)", mode)
-		}
-		if err := config.SaveSettings(paths.Settings, settings); err != nil {
-			return err
-		}
+	s, err := config.LoadSettings(paths.Settings)
+	if err != nil {
+		return err
 	}
-
-	if show || mode != "" {
-		fmt.Printf("Cache mode: %s\n", settings.CacheMode)
+	switch key {
+	case "trust.mine":
+		v, err := strconv.ParseBool(strings.TrimSpace(value))
+		if err != nil {
+			return errors.New("trust.mine expects true or false")
+		}
+		s.Mine = v
+	default:
+		return fmt.Errorf("unknown setting %q (known: trust.mine)", key)
 	}
+	if err := config.SaveSettings(paths.Settings, s); err != nil {
+		return err
+	}
+	logf("set %s to %v", key, s.Mine)
 	return nil
 }
 
-func handleConfigExec(mode string, show bool) error {
-	paths, settings, err := ensurePathsAndSettings("")
+func configUnset(cmd *cobra.Command, args []string) error {
+	key := args[0]
+	paths, err := ensurePaths("")
 	if err != nil {
 		return err
 	}
-
-	if mode != "" {
-		switch strings.ToLower(mode) {
-		case string(config.ExecModeIsolate):
-			settings.ExecMode = config.ExecModeIsolate
-		case string(config.ExecModeCWD):
-			settings.ExecMode = config.ExecModeCWD
-		default:
-			return fmt.Errorf("unknown execution mode %s (expected isolate|cwd)", mode)
-		}
-		if err := config.SaveSettings(paths.Settings, settings); err != nil {
-			return err
-		}
+	s, err := config.LoadSettings(paths.Settings)
+	if err != nil {
+		return err
 	}
-
-	if show || mode != "" {
-		modeOut := settings.ExecMode
-		if modeOut == "" {
-			modeOut = config.ExecModeIsolate
-		}
-		fmt.Printf("Execution mode: %s\n", modeOut)
+	switch key {
+	case "trust.mine":
+		s.Mine = true
+	default:
+		return fmt.Errorf("unknown setting %q (known: trust.mine)", key)
 	}
+	if err := config.SaveSettings(paths.Settings, s); err != nil {
+		return err
+	}
+	logf("reset %s to default", key)
 	return nil
 }

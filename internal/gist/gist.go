@@ -6,12 +6,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net/http"
 	"net/url"
-	"os/exec"
 	"regexp"
 	"strings"
 	"time"
 )
+
+const apiBase = "https://api.github.com"
 
 type File struct {
 	Filename  string `json:"filename"`
@@ -40,7 +43,6 @@ type Gist struct {
 	History     []HistoryEntry  `json:"history"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 	HTMLURL     string          `json:"html_url"`
-	Raw         map[string]any  `json:"-"`
 }
 
 type ListItem struct {
@@ -51,7 +53,7 @@ type ListItem struct {
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
-var gistURLRe = regexp.MustCompile(`gist\.github\.com/[^/]+/([a-fA-F0-9]+)`) // gist url path extraction
+var gistURLRe = regexp.MustCompile(`gist\.github\.com/[^/]+/([a-fA-F0-9]+)`)
 
 func ExtractID(input string) string {
 	if matches := gistURLRe.FindStringSubmatch(input); len(matches) == 2 {
@@ -83,145 +85,140 @@ func (g Gist) LatestVersion() string {
 	return ""
 }
 
-func callGH(ctx context.Context, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, "gh", args...)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, fmt.Errorf("gh %v failed: %v: %s", args, err, strings.TrimSpace(stderr.String()))
-	}
-	return out, nil
+// Client is a thin GitHub REST client. An empty token means unauthenticated.
+type Client struct {
+	hc    *http.Client
+	base  string
+	token string
 }
 
-func Fetch(ctx context.Context, id string, ref string) (Gist, error) {
+func New(token string) *Client {
+	return newWithBase(apiBase, token)
+}
+
+func newWithBase(base, token string) *Client {
+	return &Client{hc: &http.Client{Timeout: 30 * time.Second}, base: base, token: token}
+}
+
+func (c *Client) HasToken() bool { return c.token != "" }
+
+// get performs a GET and returns the body, the response headers, and whether
+// the server replied 304 (content unchanged given the If-None-Match header).
+func (c *Client) get(ctx context.Context, path string, etag string) ([]byte, http.Header, bool, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.base+path, nil)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	req.Header.Set("Accept", "application/vnd.github+json")
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	if etag != "" {
+		req.Header.Set("If-None-Match", etag)
+	}
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return nil, nil, false, err
+	}
+	defer resp.Body.Close()
+
+	switch resp.StatusCode {
+	case http.StatusNotModified:
+		return nil, resp.Header, true, nil
+	case http.StatusOK:
+		body, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, nil, false, fmt.Errorf("read response: %w", err)
+		}
+		return body, resp.Header, false, nil
+	case http.StatusNotFound:
+		return nil, nil, false, &NotFoundError{Path: path}
+	default:
+		body, _ := io.ReadAll(io.LimitReader(resp.Body, 2048))
+		return nil, nil, false, fmt.Errorf("github api %s: http %d: %s", path, resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+}
+
+type NotFoundError struct{ Path string }
+
+func (e *NotFoundError) Error() string {
+	return fmt.Sprintf("github api %s: http 404 (not found)", e.Path)
+}
+
+func IsNotFound(err error) bool {
+	var nf *NotFoundError
+	return errors.As(err, &nf)
+}
+
+// Fetch returns gist metadata, optionally short-circuited with an ETag.
+// On a 304, gist is zero-valued, notModified is true, and etag is unchanged.
+func (c *Client) Fetch(ctx context.Context, id string, ref string) (Gist, error) {
+	g, _, _, err := c.FetchCached(ctx, id, ref, "")
+	return g, err
+}
+
+func (c *Client) FetchCached(ctx context.Context, id string, ref string, etag string) (Gist, string, bool, error) {
 	path := fmt.Sprintf("/gists/%s", id)
 	if ref != "" {
 		path = fmt.Sprintf("/gists/%s/%s", id, ref)
 	}
-	out, err := callGH(ctx, "api", path)
+	body, hdr, notModified, err := c.get(ctx, path, etag)
 	if err != nil {
-		return Gist{}, err
+		return Gist{}, "", false, err
+	}
+	if notModified {
+		return Gist{}, "", true, nil
 	}
 	var g Gist
-	if err := json.Unmarshal(out, &g); err != nil {
-		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	if err := json.Unmarshal(body, &g); err != nil {
+		return Gist{}, "", false, fmt.Errorf("parse gist response: %w", err)
 	}
-	g.Raw = map[string]any{}
-	if err := json.Unmarshal(out, &g.Raw); err != nil {
-		// ignore secondary parse failure
-	}
-	return g, nil
+	return g, hdr.Get("Etag"), false, nil
 }
 
-func UpdateFiles(ctx context.Context, id string, files map[string]string) (Gist, error) {
-	type filePayload struct {
-		Content string `json:"content"`
-	}
-	payload := struct {
-		Files map[string]filePayload `json:"files"`
-	}{
-		Files: map[string]filePayload{},
-	}
-	for name, content := range files {
-		payload.Files[name] = filePayload{Content: content}
-	}
-	body, err := json.Marshal(payload)
+// Download fetches a file's raw content (e.g. from raw_url).
+func (c *Client) Download(ctx context.Context, rawURL string) ([]byte, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return Gist{}, fmt.Errorf("encode gist payload: %w", err)
+		return nil, err
 	}
-
-	path := fmt.Sprintf("/gists/%s", id)
-	cmd := exec.CommandContext(ctx, "gh", "api", "-X", "PATCH", path, "--input", "-")
-	cmd.Stdin = bytes.NewReader(body)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
+	if c.token != "" {
+		req.Header.Set("Authorization", "Bearer "+c.token)
+	}
+	resp, err := c.hc.Do(req)
 	if err != nil {
-		return Gist{}, fmt.Errorf("gh api patch %s failed: %v: %s", id, err, strings.TrimSpace(stderr.String()))
+		return nil, err
 	}
-	var g Gist
-	if err := json.Unmarshal(out, &g); err != nil {
-		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("download %s: http %d", rawURL, resp.StatusCode)
 	}
-	g.Raw = map[string]any{}
-	if err := json.Unmarshal(out, &g.Raw); err != nil {
-		// ignore secondary parse failure
-	}
-	return g, nil
+	return io.ReadAll(resp.Body)
 }
 
-func UpdateDescription(ctx context.Context, id string, description string) (Gist, error) {
-	payload := struct {
-		Description string `json:"description"`
-	}{
-		Description: description,
+func (c *Client) CurrentUser(ctx context.Context) (string, error) {
+	if c.token == "" {
+		return "", errors.New("not authenticated")
 	}
-	body, err := json.Marshal(payload)
+	body, _, _, err := c.get(ctx, "/user", "")
 	if err != nil {
-		return Gist{}, fmt.Errorf("encode gist payload: %w", err)
+		return "", err
 	}
-	path := fmt.Sprintf("/gists/%s", id)
-	cmd := exec.CommandContext(ctx, "gh", "api", "-X", "PATCH", path, "--input", "-")
-	cmd.Stdin = bytes.NewReader(body)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return Gist{}, fmt.Errorf("gh api patch %s failed: %v: %s", id, err, strings.TrimSpace(stderr.String()))
+	var resp struct {
+		Login string `json:"login"`
 	}
-	var g Gist
-	if err := json.Unmarshal(out, &g); err != nil {
-		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return "", fmt.Errorf("parse current user: %w", err)
 	}
-	g.Raw = map[string]any{}
-	if err := json.Unmarshal(out, &g.Raw); err != nil {
-		// ignore secondary parse failure
-	}
-	return g, nil
+	return resp.Login, nil
 }
 
-func Create(ctx context.Context, files map[string]string, description string, public bool) (Gist, error) {
-	type filePayload struct {
-		Content string `json:"content"`
-	}
-	payload := struct {
-		Files       map[string]filePayload `json:"files"`
-		Description string                 `json:"description,omitempty"`
-		Public      bool                   `json:"public"`
-	}{
-		Files:  map[string]filePayload{},
-		Public: public,
-	}
-	for name, content := range files {
-		payload.Files[name] = filePayload{Content: content}
-	}
-	payload.Description = description
-
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return Gist{}, fmt.Errorf("encode gist payload: %w", err)
-	}
-	cmd := exec.CommandContext(ctx, "gh", "api", "-X", "POST", "/gists", "--input", "-")
-	cmd.Stdin = bytes.NewReader(body)
-	var stderr bytes.Buffer
-	cmd.Stderr = &stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return Gist{}, fmt.Errorf("gh api create failed: %v: %s", err, strings.TrimSpace(stderr.String()))
-	}
-	var g Gist
-	if err := json.Unmarshal(out, &g); err != nil {
-		return Gist{}, fmt.Errorf("parse gist response: %w", err)
-	}
-	g.Raw = map[string]any{}
-	if err := json.Unmarshal(out, &g.Raw); err != nil {
-		// ignore secondary parse failure
-	}
-	return g, nil
+func (c *Client) ListForOwner(ctx context.Context, owner string, perPage, maxPages int) ([]ListItem, error) {
+	return c.list(ctx, fmt.Sprintf("/users/%s/gists", owner), perPage, maxPages)
 }
 
-func List(ctx context.Context, perPage, maxPages int) ([]ListItem, error) {
+func (c *Client) list(ctx context.Context, base string, perPage, maxPages int) ([]ListItem, error) {
 	if perPage <= 0 {
 		perPage = 50
 	}
@@ -230,13 +227,12 @@ func List(ctx context.Context, perPage, maxPages int) ([]ListItem, error) {
 	}
 	var all []ListItem
 	for page := 1; page <= maxPages; page++ {
-		path := fmt.Sprintf("/gists?per_page=%d&page=%d", perPage, page)
-		out, err := callGH(ctx, "api", path)
+		body, _, _, err := c.get(ctx, fmt.Sprintf("%s?per_page=%d&page=%d", base, perPage, page), "")
 		if err != nil {
 			return nil, err
 		}
 		var batch []ListItem
-		if err := json.Unmarshal(out, &batch); err != nil {
+		if err := json.Unmarshal(body, &batch); err != nil {
 			return nil, fmt.Errorf("parse gist list: %w", err)
 		}
 		all = append(all, batch...)
@@ -247,57 +243,68 @@ func List(ctx context.Context, perPage, maxPages int) ([]ListItem, error) {
 	return all, nil
 }
 
-func ListForOwner(ctx context.Context, owner string, perPage, maxPages int) ([]ListItem, error) {
-	if perPage <= 0 {
-		perPage = 50
-	}
-	if maxPages <= 0 {
-		maxPages = 1
-	}
-	var all []ListItem
-	for page := 1; page <= maxPages; page++ {
-		path := fmt.Sprintf("/users/%s/gists?per_page=%d&page=%d", owner, perPage, page)
-		out, err := callGH(ctx, "api", path)
-		if err != nil {
-			return nil, err
-		}
-		var batch []ListItem
-		if err := json.Unmarshal(out, &batch); err != nil {
-			return nil, fmt.Errorf("parse gist list for owner %s: %w", owner, err)
-		}
-		all = append(all, batch...)
-		if len(batch) < perPage {
-			break
-		}
-	}
-	return all, nil
+func (c *Client) UpdateDescription(ctx context.Context, id string, description string) (Gist, error) {
+	return c.patch(ctx, fmt.Sprintf("/gists/%s", id), map[string]string{"description": description})
 }
 
-func CurrentUser(ctx context.Context) (string, error) {
-	out, err := callGH(ctx, "api", "/user")
+func (c *Client) Create(ctx context.Context, files map[string]string, description string, public bool) (Gist, error) {
+	payload := map[string]any{
+		"files":  map[string]any{},
+		"public": public,
+	}
+	if description != "" {
+		payload["description"] = description
+	}
+	for name, content := range files {
+		payload["files"].(map[string]any)[name] = map[string]string{"content": content}
+	}
+	return c.post(ctx, "/gists", payload)
+}
+
+func (c *Client) patch(ctx context.Context, path string, payload any) (Gist, error) {
+	return c.send(ctx, http.MethodPatch, path, payload)
+}
+
+func (c *Client) post(ctx context.Context, path string, payload any) (Gist, error) {
+	return c.send(ctx, http.MethodPost, path, payload)
+}
+
+func (c *Client) send(ctx context.Context, method, path string, payload any) (Gist, error) {
+	if c.token == "" {
+		return Gist{}, errors.New("this action requires authentication; run `gixt auth login`")
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
-		return "", err
+		return Gist{}, fmt.Errorf("encode payload: %w", err)
 	}
-	var resp struct {
-		Login string `json:"login"`
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, bytes.NewReader(body))
+	if err != nil {
+		return Gist{}, err
 	}
-	if err := json.Unmarshal(out, &resp); err != nil {
-		return "", fmt.Errorf("parse current user: %w", err)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+c.token)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.hc.Do(req)
+	if err != nil {
+		return Gist{}, err
 	}
-	return resp.Login, nil
+	defer resp.Body.Close()
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Gist{}, fmt.Errorf("read response: %w", err)
+	}
+	if resp.StatusCode >= 300 {
+		return Gist{}, fmt.Errorf("github api %s %s: http %d: %s", method, path, resp.StatusCode, strings.TrimSpace(string(data)))
+	}
+	var g Gist
+	if err := json.Unmarshal(data, &g); err != nil {
+		return Gist{}, fmt.Errorf("parse gist response: %w", err)
+	}
+	return g, nil
 }
 
-func GuessOwner(g Gist) string {
-	if g.Owner.Login != "" {
-		return g.Owner.Login
-	}
-	if login, ok := g.Raw["owner"].(map[string]any); ok {
-		if l, ok := login["login"].(string); ok {
-			return l
-		}
-	}
-	return ""
-}
+func GuessOwner(g Gist) string { return g.Owner.Login }
 
 func IsLikelyGistID(id string) bool {
 	trimmed := strings.TrimSpace(id)
@@ -312,14 +319,3 @@ func IsLikelyGistID(id string) bool {
 	}
 	return true
 }
-
-// IsNotFound reports whether the error from gh indicates a 404.
-func IsNotFound(err error) bool {
-	if err == nil {
-		return false
-	}
-	msg := strings.ToLower(err.Error())
-	return strings.Contains(msg, "http 404") || strings.Contains(msg, " 404 ") || strings.Contains(msg, "not found")
-}
-
-var ErrAmbiguous = errors.New("multiple matching gists")

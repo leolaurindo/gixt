@@ -1,21 +1,21 @@
 package cli
 
 import (
+	"context"
 	"fmt"
-	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"runtime"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/leolaurindo/gixt/internal/cache"
 	"github.com/leolaurindo/gixt/internal/gist"
 )
 
-func materializeFiles(g gist.Gist, dir string, forceUpdate bool) ([]string, bool, error) {
+// materializeFiles writes a gist's files into dir. When the work dir already
+// holds the same files (cached), they are reused and no downloads happen.
+func materializeFiles(ctx context.Context, client *gist.Client, g gist.Gist, dir string, forceUpdate bool) ([]string, bool, error) {
 	type gistFile struct {
 		name string
 		info gist.File
@@ -39,26 +39,16 @@ func materializeFiles(g gist.Gist, dir string, forceUpdate bool) ([]string, bool
 		filenames = append(filenames, f.name)
 	}
 
-	manifestPath := cache.ManifestPath(dir)
+	metaPath := cache.MetaPath(dir)
 	if !forceUpdate {
-		if cache.PathExists(manifestPath) {
-			existing, err := cache.LoadManifest(manifestPath)
-			if err == nil {
-				valid := true
-				for _, f := range existing.Files {
-					if _, err := sanitizeGistPath(f); err != nil {
-						valid = false
-						break
-					}
-				}
-				if valid && cache.PresentFiles(dir, existing.Files) {
-					return existing.Files, true, nil
-				}
+		if cache.PathExists(metaPath) {
+			existing, err := cache.LoadMeta(metaPath)
+			if err == nil && cache.PresentFiles(dir, existing.Files) {
+				return existing.Files, true, nil
 			}
 		}
 	}
 
-	client := http.Client{Timeout: 30 * time.Second}
 	for _, gf := range files {
 		name := gf.name
 		info := gf.info
@@ -70,22 +60,13 @@ func materializeFiles(g gist.Gist, dir string, forceUpdate bool) ([]string, bool
 		if info.Content != "" && !info.Truncated {
 			data = []byte(info.Content)
 		} else {
-			resp, err := client.Get(info.RawURL)
+			var err error
+			data, err = client.Download(ctx, info.RawURL)
 			if err != nil {
 				return nil, false, fmt.Errorf("download %s: %w", name, err)
 			}
-			body, err := io.ReadAll(resp.Body)
-			resp.Body.Close()
-			if err != nil {
-				return nil, false, fmt.Errorf("read %s: %w", name, err)
-			}
-			if resp.StatusCode >= 300 {
-				return nil, false, fmt.Errorf("download %s: http %d", name, resp.StatusCode)
-			}
-			data = body
 		}
-		mode := fileModeFor(name)
-		if err := os.WriteFile(target, data, mode); err != nil {
+		if err := os.WriteFile(target, data, fileModeFor(name)); err != nil {
 			return nil, false, fmt.Errorf("write file %s: %w", name, err)
 		}
 	}

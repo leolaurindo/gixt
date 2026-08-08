@@ -10,8 +10,9 @@ import (
 type Paths struct {
 	ConfigDir string
 	CacheDir  string
-	AliasFile string
-	IndexFile string
+	KnownFile string
+	AuthFile  string
+	TrustFile string
 	Settings  string
 }
 
@@ -38,8 +39,9 @@ func Discover(cacheOverride string) (Paths, error) {
 	return Paths{
 		ConfigDir: cfgDir,
 		CacheDir:  cacheDir,
-		AliasFile: filepath.Join(cfgDir, "aliases.json"),
-		IndexFile: filepath.Join(cfgDir, "index.json"),
+		KnownFile: filepath.Join(cfgDir, "known.json"),
+		AuthFile:  filepath.Join(cfgDir, "auth.json"),
+		TrustFile: filepath.Join(cfgDir, "trust.json"),
 		Settings:  filepath.Join(cfgDir, "settings.json"),
 	}, nil
 }
@@ -54,46 +56,15 @@ func EnsureDirs(p Paths) error {
 	return nil
 }
 
-type TrustMode string
-
-const (
-	TrustNever TrustMode = "never"
-	TrustMine  TrustMode = "mine" // trust gists owned by the authenticated user
-	TrustAll   TrustMode = "all"
-)
-
-type CacheMode string
-
-const (
-	CacheModeDefault CacheMode = "never" // default to temp/uvx-like
-	CacheModeCache   CacheMode = "cache"
-)
-
-type ExecMode string
-
-const (
-	ExecModeIsolate ExecMode = "isolate"
-	ExecModeCWD     ExecMode = "cwd"
-)
-
 type Settings struct {
-	Mode          TrustMode       `json:"mode,omitempty"`
-	TrustedOwners map[string]bool `json:"trusted_owners,omitempty"`
-	TrustedGists  map[string]bool `json:"trusted_gists,omitempty"`
-	CacheMode     CacheMode       `json:"cache_mode,omitempty"`
-	ExecMode      ExecMode        `json:"exec_mode,omitempty"`
+	Mine bool `json:"mine"`
 }
 
 func LoadSettings(path string) (Settings, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return Settings{
-				Mode:          TrustNever,
-				TrustedOwners: map[string]bool{},
-				TrustedGists:  map[string]bool{},
-				CacheMode:     CacheModeDefault,
-			}, nil
+			return Settings{Mine: true}, nil
 		}
 		return Settings{}, fmt.Errorf("read settings: %w", err)
 	}
@@ -101,40 +72,10 @@ func LoadSettings(path string) (Settings, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Settings{}, fmt.Errorf("parse settings: %w", err)
 	}
-	if s.TrustedOwners == nil {
-		s.TrustedOwners = map[string]bool{}
-	}
-	if s.TrustedGists == nil {
-		s.TrustedGists = map[string]bool{}
-	}
-	if s.Mode == "" {
-		s.Mode = TrustNever
-	}
-	if s.CacheMode == "" {
-		s.CacheMode = CacheModeDefault
-	}
-	if s.ExecMode != "" && s.ExecMode != ExecModeIsolate && s.ExecMode != ExecModeCWD {
-		s.ExecMode = ExecModeIsolate
-	}
 	return s, nil
 }
 
 func SaveSettings(path string, s Settings) error {
-	if s.TrustedOwners == nil {
-		s.TrustedOwners = map[string]bool{}
-	}
-	if s.TrustedGists == nil {
-		s.TrustedGists = map[string]bool{}
-	}
-	if s.Mode == "" {
-		s.Mode = TrustNever
-	}
-	if s.CacheMode == "" {
-		s.CacheMode = CacheModeDefault
-	}
-	if s.ExecMode != "" && s.ExecMode != ExecModeIsolate && s.ExecMode != ExecModeCWD {
-		s.ExecMode = ExecModeIsolate
-	}
 	buf, err := json.MarshalIndent(s, "", "  ")
 	if err != nil {
 		return fmt.Errorf("encode settings: %w", err)

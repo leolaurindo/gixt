@@ -2,80 +2,62 @@ package runner
 
 import (
 	"bufio"
-	"encoding/json"
+	"context"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
+	"time"
 )
 
-type RunManifest struct {
-	Run     string            `json:"run"`
-	Env     map[string]string `json:"env"`
-	Details string            `json:"details,omitempty"`
-	Version string            `json:"version,omitempty"`
-}
-
-const DefaultDetails = "No description provided"
-
-func LoadRunManifest(path string) (RunManifest, error) {
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return RunManifest{}, err
-	}
-	return LoadRunManifestBytes(data)
-}
-
-func LoadRunManifestBytes(data []byte) (RunManifest, error) {
-	var m RunManifest
-	dec := json.NewDecoder(strings.NewReader(string(data)))
-	dec.DisallowUnknownFields()
-	if err := dec.Decode(&m); err != nil {
-		return RunManifest{}, fmt.Errorf("parse run manifest: %w", err)
-	}
-	if err := validateRunManifest(m); err != nil {
-		return RunManifest{}, err
-	}
-	return normalizeRunManifest(m), nil
-}
-
-func BuildCommand(dir string, manifestPath string, files []string, userArgs []string, execDir string) ([]string, map[string]string, string, error) {
-	if manifestPath != "" {
-		full := filepath.Join(dir, manifestPath)
-		if _, err := os.Stat(full); err == nil {
-			m, err := LoadRunManifest(full)
-			if err != nil {
-				return nil, nil, "", err
-			}
-			if strings.TrimSpace(m.Run) == "" {
-				return nil, nil, "", fmt.Errorf("run manifest %s has empty run field", manifestPath)
-			}
-			runCmd := m.Run
-			if execDir != "" && execDir != dir {
-				runCmd = rebaseRunToDir(runCmd, dir)
-			}
-			shellCmd := shellCommand(runCmd)
-			return append(shellCmd, userArgs...), m.Env, "manifest", nil
-		}
-	}
-
+// BuildCommand resolves the command to run for a gist's files.
+// Resolution order: python override, shebang, extension mapping.
+// userArgs are appended verbatim after the resolved command.
+func BuildCommand(dir string, files []string, userArgs []string, python string) ([]string, string, error) {
 	if len(files) == 0 {
-		return nil, nil, "", fmt.Errorf("no files in gist to run")
+		return nil, "", fmt.Errorf("no files in gist to run")
 	}
 
 	chosen := selectFile(files)
 	chosenPath := filepath.Join(dir, chosen)
 
+	if python != "" {
+		return append([]string{python, chosenPath}, userArgs...), "python override", nil
+	}
+
 	if cmd, reason, ok := commandFromShebang(chosenPath); ok {
-		return append(cmd, userArgs...), nil, reason, nil
+		return append(cmd, userArgs...), reason, nil
 	}
 
 	cmd, reason, err := commandFromExtension(chosenPath)
 	if err != nil {
-		return nil, nil, "", err
+		return nil, "", err
 	}
-	return append(cmd, userArgs...), nil, reason, nil
+	return append(cmd, userArgs...), reason, nil
+}
+
+// Execute runs the resolved command in dir, wiring stdin/stdout/stderr and
+// propagating exit codes and signals.
+func Execute(ctx context.Context, dir string, cmd []string) error {
+	c := exec.CommandContext(ctx, cmd[0], cmd[1:]...)
+	c.Dir = dir
+	c.Stdin = os.Stdin
+	c.Stdout = os.Stdout
+	c.Stderr = os.Stderr
+	c.Cancel = func() error {
+		if c.Process != nil {
+			return c.Process.Signal(os.Interrupt)
+		}
+		return nil
+	}
+	c.WaitDelay = 5 * time.Second
+
+	if err := c.Run(); err != nil {
+		return fmt.Errorf("exec %s: %w", cmd[0], err)
+	}
+	return nil
 }
 
 func selectFile(files []string) string {
@@ -232,76 +214,4 @@ func commandFromExtension(path string) ([]string, string, error) {
 		return []string{"php", path}, "extension .php", nil
 	}
 	return nil, "", fmt.Errorf("cannot determine how to run %s (unknown extension)", filepath.Base(path))
-}
-
-func shellCommand(cmd string) []string {
-	if runtime.GOOS == "windows" {
-		return []string{"cmd", "/C", cmd}
-	}
-	return []string{"sh", "-c", cmd}
-}
-
-func rebaseRunToDir(run string, dir string) string {
-	if strings.TrimSpace(run) == "" {
-		return run
-	}
-	parts := strings.Fields(run)
-	if len(parts) == 0 {
-		return run
-	}
-	for i, p := range parts {
-		if strings.HasPrefix(p, "-") {
-			continue
-		}
-		if filepath.IsAbs(p) {
-			continue
-		}
-		candidate := filepath.Join(dir, p)
-		if info, err := os.Stat(candidate); err == nil && !info.IsDir() {
-			parts[i] = candidate
-			break
-		}
-	}
-	return strings.Join(parts, " ")
-}
-
-func validateRunManifest(m RunManifest) error {
-	run := strings.TrimSpace(m.Run)
-	if run == "" {
-		return fmt.Errorf("run manifest has empty run field")
-	}
-	if strings.ContainsAny(run, "\r\n") {
-		return fmt.Errorf("run manifest run field must not contain newlines")
-	}
-	if len(run) > 4096 {
-		return fmt.Errorf("run manifest run field too long")
-	}
-	for k := range m.Env {
-		if strings.TrimSpace(k) == "" {
-			return fmt.Errorf("run manifest env contains empty key")
-		}
-		if len(k) > 256 {
-			return fmt.Errorf("run manifest env key too long: %s", k)
-		}
-		if strings.ContainsAny(k, "\r\n") {
-			return fmt.Errorf("run manifest env key contains newline: %s", k)
-		}
-	}
-	if len(strings.TrimSpace(m.Details)) > 4096 {
-		return fmt.Errorf("run manifest details too long")
-	}
-	if len(strings.TrimSpace(m.Version)) > 256 {
-		return fmt.Errorf("run manifest version too long")
-	}
-	return nil
-}
-
-func normalizeRunManifest(m RunManifest) RunManifest {
-	if m.Env == nil {
-		m.Env = map[string]string{}
-	}
-	if strings.TrimSpace(m.Details) == "" {
-		m.Details = DefaultDetails
-	}
-	return m
 }
