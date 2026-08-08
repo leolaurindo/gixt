@@ -55,14 +55,20 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 	}
 
 	cmd, reason, err := BuildCommand(dir, []string{"script.txt"}, nil, "")
-	if err != nil {
-		t.Fatalf("BuildCommand shebang error: %v", err)
-	}
-	if reason != "shebang" {
-		t.Fatalf("expected shebang reason, got %q", reason)
-	}
-	if cmd[len(cmd)-1] != scriptPath {
-		t.Fatalf("expected script path in command, got %v", cmd)
+	if runtime.GOOS == "windows" {
+		if err == nil {
+			t.Fatalf("expected unknown-extension error on windows (shebang skipped), got %v", cmd)
+		}
+	} else {
+		if err != nil {
+			t.Fatalf("BuildCommand shebang error: %v", err)
+		}
+		if reason != "shebang" {
+			t.Fatalf("expected shebang reason, got %q", reason)
+		}
+		if cmd[len(cmd)-1] != scriptPath {
+			t.Fatalf("expected script path in command, got %v", cmd)
+		}
 	}
 
 	unknownPath := filepath.Join(dir, "weird.xyz")
