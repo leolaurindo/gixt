@@ -22,6 +22,7 @@ import (
 type runOptions struct {
 	yes     bool
 	offline bool
+	noCache bool
 	python  string
 	isolate bool
 	ref     string
@@ -35,6 +36,7 @@ type runOptions struct {
 func addRunFlags(fs *pflag.FlagSet) {
 	fs.BoolP("yes", "y", false, "skip the trust prompt for this run")
 	fs.Bool("offline", false, "run the cached copy without contacting GitHub")
+	fs.Bool("no-cache", false, "download to a temp dir and delete it after the run")
 	fs.String("python", "", "interpreter to use instead of the shebang (e.g. .venv/bin/python)")
 	fs.Bool("isolate", false, "run in the gist work dir instead of the current directory")
 	fs.String("ref", "", "run a specific gist revision")
@@ -60,6 +62,7 @@ func runFlagsOf(cmd *cobra.Command) *runOptions {
 	return &runOptions{
 		yes:     mustBool(cmd, "yes"),
 		offline: mustBool(cmd, "offline"),
+		noCache: mustBool(cmd, "no-cache") || os.Getenv("GIXT_NO_CACHE") != "",
 		python:  mustString(cmd, "python"),
 		isolate: mustBool(cmd, "isolate"),
 		ref:     mustString(cmd, "ref"),
@@ -89,9 +92,12 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 	}
 
 	client := gist.New(loadToken(paths.AuthFile))
-	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, o.ref, o.offline)
+	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, o.ref, o.offline, o.noCache)
 	if err != nil {
 		return err
+	}
+	if o.noCache {
+		defer os.RemoveAll(workDir)
 	}
 
 	if o.view {
@@ -140,7 +146,7 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 
 	err = runner.Execute(runCtx, execDir, cmd)
 	if err == nil {
-		if !fromCache {
+		if !fromCache && !o.noCache {
 			if err := cache.Prune(paths.CacheDir, id, meta.SHA); err != nil {
 				return err
 			}
@@ -190,10 +196,13 @@ func isTrusted(ctx context.Context, paths config.Paths, client *gist.Client, id 
 }
 
 // obtain makes the gist available on disk and returns its work dir + cache metadata.
-// With --offline it only touches the cache. Otherwise it performs a
-// conditional request: if the server replies 304 the cached revision is
-// reused and no files are downloaded.
-func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, ref string, offline bool) (string, cache.Meta, bool, error) {
+// With --no-cache it uses a temp dir. With --offline it only touches the cache.
+// Otherwise it performs a conditional request: if the server replies 304 the
+// cached revision is reused and no files are downloaded.
+func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, ref string, offline, noCache bool) (string, cache.Meta, bool, error) {
+	if noCache {
+		return obtainTemp(ctx, client, id, ref)
+	}
 	if offline {
 		dir, m, ok := cache.Latest(paths.CacheDir, id)
 		if !ok {
@@ -269,6 +278,40 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 		}
 	}
 	return workDir, m, false, nil
+}
+
+// obtainTemp downloads a gist into a fresh temp dir. The caller removes the
+// dir after the run, so nothing persists.
+func obtainTemp(ctx context.Context, client *gist.Client, id, ref string) (string, cache.Meta, bool, error) {
+	g, _, _, err := client.FetchCached(ctx, id, ref, "")
+	if err != nil {
+		return "", cache.Meta{}, false, err
+	}
+	sha := g.LatestVersion()
+	if sha == "" {
+		sha = ref
+	}
+	if sha == "" {
+		return "", cache.Meta{}, false, errors.New("could not determine gist revision")
+	}
+	dir, err := os.MkdirTemp("", "gixt-")
+	if err != nil {
+		return "", cache.Meta{}, false, err
+	}
+	files, _, err := materializeFiles(ctx, client, g, dir, false)
+	if err != nil {
+		os.RemoveAll(dir)
+		return "", cache.Meta{}, false, err
+	}
+	return dir, cache.Meta{
+		GistID:      id,
+		SHA:         sha,
+		Description: g.Description,
+		Owner:       gist.GuessOwner(g),
+		Files:       files,
+		Source:      g.HTMLURL,
+		CreatedAt:   time.Now(),
+	}, false, nil
 }
 
 func promptTrust(m cache.Meta) error {
