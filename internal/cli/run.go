@@ -91,8 +91,13 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return err
 	}
 
+	ref := o.ref
+	if ref == "" {
+		ref = pinnedRef(paths, id)
+	}
+
 	client := gist.New(loadToken(paths.AuthFile))
-	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, o.ref, o.offline, o.noCache)
+	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, ref, o.offline, o.noCache)
 	if err != nil {
 		return err
 	}

@@ -23,7 +23,7 @@ const (
 )
 
 var knownCommands = []string{
-	"run", "add", "remove", "list", "trust", "gist", "cache", "auth", "self",
+	"run", "add", "remove", "list", "trust", "pin", "gist", "cache", "auth", "self",
 	"help", "completion",
 }
 
@@ -59,6 +59,7 @@ func newRootCmd() *cobra.Command {
 		newRemoveCmd(),
 		newListCmd(),
 		newTrustCmd(),
+		newPinCmd(),
 		newGistCmd(),
 		newCacheCmd(),
 		newAuthCmd(),

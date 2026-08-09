@@ -12,12 +12,14 @@ import (
 )
 
 // Entry is one remembered gist. Name lookup matches the alias or the gist's
-// filenames (basename or full name).
+// filenames (basename or full name). Pin, when set, is the revision `run`
+// executes by default.
 type Entry struct {
 	ID          string    `json:"id"`
 	Description string    `json:"description"`
 	Filenames   []string  `json:"filenames"`
 	Alias       string    `json:"alias,omitempty"`
+	Pin         string    `json:"pin,omitempty"`
 	UpdatedAt   time.Time `json:"updated_at"`
 	Owner       string    `json:"owner"`
 }
