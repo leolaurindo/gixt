@@ -57,7 +57,7 @@ func authLogin(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("token rejected: %w", err)
 	}
 
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -73,7 +73,7 @@ func authLogin(cmd *cobra.Command, args []string) error {
 }
 
 func authStatus(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func authStatus(cmd *cobra.Command, args []string) error {
 }
 
 func authLogout(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

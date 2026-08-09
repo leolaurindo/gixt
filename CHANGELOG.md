@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-08-09
+
+### Added
+- `gixt run --no-cache` (and `GIXT_NO_CACHE`) downloads to a temp dir and deletes it after the run.
+- `gixt pin <target> [<sha>]` validates and pins a gist revision. Metadata updates preserve pins, and cache pruning retains pinned contents for offline use.
+
+### Changed
+- Replaced the `config` command and automatic owner trust with pure commit-scoped TOFU. `gixt trust mine` explicitly snapshots exact current revisions; later changes still prompt.
+- `go install` builds now report the module version (via `debug.ReadBuildInfo`) instead of `dev`.
+
+### Fixed
+- `--offline` now takes precedence over no-cache mode without contacting GitHub.
+- `--view` and `--dry-run` no longer change trust approvals.
+- Pins survive add/refresh operations, explicit revisions are validated, and offline runs select the exact pinned cache entry.
+
 ## [0.2.1] - 2026-08-08
 
 ### Fixed

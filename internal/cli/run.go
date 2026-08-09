@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -22,6 +23,7 @@ import (
 type runOptions struct {
 	yes     bool
 	offline bool
+	noCache bool
 	python  string
 	isolate bool
 	ref     string
@@ -35,6 +37,7 @@ type runOptions struct {
 func addRunFlags(fs *pflag.FlagSet) {
 	fs.BoolP("yes", "y", false, "skip the trust prompt for this run")
 	fs.Bool("offline", false, "run the cached copy without contacting GitHub")
+	fs.Bool("no-cache", false, "download to a temp dir and delete it after the run")
 	fs.String("python", "", "interpreter to use instead of the shebang (e.g. .venv/bin/python)")
 	fs.Bool("isolate", false, "run in the gist work dir instead of the current directory")
 	fs.String("ref", "", "run a specific gist revision")
@@ -60,6 +63,7 @@ func runFlagsOf(cmd *cobra.Command) *runOptions {
 	return &runOptions{
 		yes:     mustBool(cmd, "yes"),
 		offline: mustBool(cmd, "offline"),
+		noCache: mustBool(cmd, "no-cache") || os.Getenv("GIXT_NO_CACHE") != "",
 		python:  mustString(cmd, "python"),
 		isolate: mustBool(cmd, "isolate"),
 		ref:     mustString(cmd, "ref"),
@@ -77,43 +81,41 @@ func runTarget(cmd *cobra.Command, args []string) error {
 
 func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded []string) error {
 	originalCWD, _ := os.Getwd()
+	if o.offline && o.noCache {
+		logf("warning: no-cache mode ignored with --offline")
+		o.noCache = false
+	}
 
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
 
-	id, _, err := resolveTarget(ctx, target, paths)
+	id, err := resolveTarget(ctx, target, paths, !o.offline)
 	if err != nil {
 		return err
+	}
+
+	pin, err := pinnedRef(paths, id)
+	if err != nil {
+		return err
+	}
+	ref := o.ref
+	if ref == "" {
+		ref = pin
 	}
 
 	client := gist.New(loadToken(paths.AuthFile))
-	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, o.ref, o.offline)
+	workDir, meta, fromCache, err := obtain(ctx, client, paths, id, ref, o.offline, o.noCache)
 	if err != nil {
 		return err
+	}
+	if o.noCache {
+		defer os.RemoveAll(workDir)
 	}
 
 	if o.view {
 		return viewFiles(meta, workDir)
-	}
-
-	trusted, err := isTrusted(ctx, paths, client, id, meta)
-	if err != nil {
-		return err
-	}
-	if !trusted && !o.yes {
-		if err := promptTrust(meta); err != nil {
-			return err
-		}
-		store, err := trust.Load(paths.TrustFile)
-		if err != nil {
-			return err
-		}
-		store.Trust(id, meta.SHA, meta.Owner)
-		if err := trust.Save(paths.TrustFile, store); err != nil {
-			return err
-		}
 	}
 
 	cmd, reason, err := runner.BuildCommand(workDir, meta.Files, forwarded, o.python)
@@ -124,6 +126,21 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 	if o.dryRun {
 		fmt.Printf("command (%s): %s\n", reason, strings.Join(cmd, " "))
 		return nil
+	}
+	if !o.yes {
+		store, err := trust.Load(paths.TrustFile)
+		if err != nil {
+			return err
+		}
+		if !store.Trusted(id, meta.SHA) {
+			if err := promptTrust(meta); err != nil {
+				return err
+			}
+			store.Trust(id, meta.SHA, meta.Owner)
+			if err := trust.Save(paths.TrustFile, store); err != nil {
+				return err
+			}
+		}
 	}
 
 	execDir := originalCWD
@@ -140,8 +157,8 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 
 	err = runner.Execute(runCtx, execDir, cmd)
 	if err == nil {
-		if !fromCache {
-			if err := cache.Prune(paths.CacheDir, id, meta.SHA); err != nil {
+		if !fromCache && !o.noCache {
+			if err := cache.Prune(paths.CacheDir, id, meta.SHA, pin); err != nil {
 				return err
 			}
 		}
@@ -168,39 +185,28 @@ func rememberGist(paths config.Paths, id string, m cache.Meta, alias string) err
 	})
 }
 
-// isTrusted reports whether the gist at this commit can run without a prompt:
-// TOFU (previously approved commit), auto-trust of your own gists, or -y.
-func isTrusted(ctx context.Context, paths config.Paths, client *gist.Client, id string, m cache.Meta) (bool, error) {
-	store, err := trust.Load(paths.TrustFile)
-	if err != nil {
-		return false, err
-	}
-	if store.Trusted(id, m.SHA) {
-		return true, nil
-	}
-	if m.Owner != "" && client.HasToken() {
-		settings, err := config.LoadSettings(paths.Settings)
-		if err == nil && settings.Mine {
-			if me, err := client.CurrentUser(ctx); err == nil && strings.EqualFold(me, m.Owner) {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
-}
-
 // obtain makes the gist available on disk and returns its work dir + cache metadata.
-// With --offline it only touches the cache. Otherwise it performs a
-// conditional request: if the server replies 304 the cached revision is
-// reused and no files are downloaded.
-func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, ref string, offline bool) (string, cache.Meta, bool, error) {
+// With --no-cache it uses a temp dir. With --offline it only touches the cache.
+// Otherwise it performs a conditional request: if the server replies 304 the
+// cached revision is reused and no files are downloaded.
+func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, ref string, offline, noCache bool) (string, cache.Meta, bool, error) {
+	if noCache {
+		return obtainTemp(ctx, client, id, ref)
+	}
 	if offline {
-		dir, m, ok := cache.Latest(paths.CacheDir, id)
-		if !ok {
-			return "", cache.Meta{}, false, fmt.Errorf("no cached copy of %s; run once online first", id)
+		var dir string
+		var m cache.Meta
+		var ok bool
+		if ref != "" {
+			dir, m, ok = cache.Revision(paths.CacheDir, id, ref)
+		} else {
+			dir, m, ok = cache.Latest(paths.CacheDir, id)
 		}
-		if ref != "" && m.SHA != ref {
-			return "", cache.Meta{}, false, fmt.Errorf("cached revision %s does not match --ref %s", m.SHA, ref)
+		if !ok {
+			if ref != "" {
+				return "", cache.Meta{}, false, fmt.Errorf("no cached revision of %s matching %s; run it online first", id, ref)
+			}
+			return "", cache.Meta{}, false, fmt.Errorf("no cached copy of %s; run once online first", id)
 		}
 		return dir, m, true, nil
 	}
@@ -241,10 +247,10 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 	}
 
 	workDir := cache.Dir(paths.CacheDir, id, sha)
-	if err := cache.EnsureDir(workDir); err != nil {
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
 		return "", cache.Meta{}, false, err
 	}
-	files, reused, err := materializeFiles(ctx, client, g, workDir, false)
+	files, reused, err := materializeFiles(ctx, client, g, workDir)
 	if err != nil {
 		return "", cache.Meta{}, false, err
 	}
@@ -253,9 +259,8 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 		GistID:      id,
 		SHA:         sha,
 		Description: g.Description,
-		Owner:       gist.GuessOwner(g),
+		Owner:       g.Owner.Login,
 		Files:       files,
-		Source:      g.HTMLURL,
 		Etag:        newEtag,
 		CreatedAt:   time.Now(),
 	}
@@ -269,6 +274,39 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 		}
 	}
 	return workDir, m, false, nil
+}
+
+// obtainTemp downloads a gist into a fresh temp dir. The caller removes the
+// dir after the run, so nothing persists.
+func obtainTemp(ctx context.Context, client *gist.Client, id, ref string) (string, cache.Meta, bool, error) {
+	g, _, _, err := client.FetchCached(ctx, id, ref, "")
+	if err != nil {
+		return "", cache.Meta{}, false, err
+	}
+	sha := g.LatestVersion()
+	if sha == "" {
+		sha = ref
+	}
+	if sha == "" {
+		return "", cache.Meta{}, false, errors.New("could not determine gist revision")
+	}
+	dir, err := os.MkdirTemp("", "gixt-")
+	if err != nil {
+		return "", cache.Meta{}, false, err
+	}
+	files, _, err := materializeFiles(ctx, client, g, dir)
+	if err != nil {
+		os.RemoveAll(dir)
+		return "", cache.Meta{}, false, err
+	}
+	return dir, cache.Meta{
+		GistID:      id,
+		SHA:         sha,
+		Description: g.Description,
+		Owner:       g.Owner.Login,
+		Files:       files,
+		CreatedAt:   time.Now(),
+	}, false, nil
 }
 
 func promptTrust(m cache.Meta) error {
@@ -293,7 +331,7 @@ func promptTrust(m cache.Meta) error {
 
 func viewFiles(m cache.Meta, dir string) error {
 	for _, f := range m.Files {
-		data, err := os.ReadFile(cache.JoinPath(dir, f))
+		data, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			return err
 		}

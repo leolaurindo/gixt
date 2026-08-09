@@ -15,7 +15,6 @@ type Meta struct {
 	Description string    `json:"description"`
 	Owner       string    `json:"owner"`
 	Files       []string  `json:"files"`
-	Source      string    `json:"source_url,omitempty"`
 	Etag        string    `json:"etag,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -55,15 +54,6 @@ func SaveMeta(path string, m Meta) error {
 	return nil
 }
 
-func PathExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func EnsureDir(path string) error {
-	return os.MkdirAll(path, 0o755)
-}
-
 func PresentFiles(dir string, files []string) bool {
 	for _, f := range files {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
@@ -78,10 +68,6 @@ func Shorten(id string) string {
 		return id
 	}
 	return id[:8]
-}
-
-func JoinPath(base string, elems ...string) string {
-	return filepath.Join(append([]string{base}, elems...)...)
 }
 
 // Latest returns the most recently cached (dir, meta) for a gist.
@@ -112,16 +98,30 @@ func Latest(cacheRoot, gistID string) (string, Meta, bool) {
 	return best, bestMan, true
 }
 
-// Prune removes every cached revision of a gist except keepSHA.
-func Prune(cacheRoot, gistID, keepSHA string) error {
+func Revision(cacheRoot, gistID, sha string) (string, Meta, bool) {
+	dir := Dir(cacheRoot, gistID, sha)
+	m, err := LoadMeta(MetaPath(dir))
+	if err != nil || m.SHA != sha {
+		return "", Meta{}, false
+	}
+	return dir, m, true
+}
+
+// Prune removes every cached revision of a gist except the requested SHAs.
+func Prune(cacheRoot, gistID string, keepSHAs ...string) error {
 	root := filepath.Join(cacheRoot, cleaner.ReplaceAllString(gistID, "-"))
-	keep := cleaner.ReplaceAllString(keepSHA, "-")
+	keep := make(map[string]bool, len(keepSHAs))
+	for _, sha := range keepSHAs {
+		if sha != "" {
+			keep[cleaner.ReplaceAllString(sha, "-")] = true
+		}
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil
 	}
 	for _, e := range entries {
-		if e.IsDir() && e.Name() != keep {
+		if e.IsDir() && !keep[e.Name()] {
 			if err := os.RemoveAll(filepath.Join(root, e.Name())); err != nil {
 				return err
 			}

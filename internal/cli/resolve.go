@@ -15,15 +15,15 @@ import (
 // resolveTarget maps a user input to a gist ID: direct gist ID/URL, a known
 // name/alias, or owner/gist (from the known store, falling back to a live
 // lookup).
-func resolveTarget(ctx context.Context, input string, paths config.Paths) (string, string, error) {
+func resolveTarget(ctx context.Context, input string, paths config.Paths, allowNetwork bool) (string, error) {
 	id := gist.ExtractID(input)
 	if gist.IsLikelyGistID(id) {
-		return id, "", nil
+		return id, nil
 	}
 
 	st, err := known.Load(paths.KnownFile)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
 
 	if strings.Contains(input, "/") && !strings.Contains(input, "://") {
@@ -38,34 +38,37 @@ func resolveTarget(ctx context.Context, input string, paths config.Paths) (strin
 			}
 		}
 		if len(matches) == 1 {
-			return matches[0].ID, matches[0].Owner, nil
+			return matches[0].ID, nil
 		}
 		if len(matches) > 1 {
-			return "", "", fmt.Errorf("owner/name %s matches multiple known gists", input)
+			return "", fmt.Errorf("owner/name %s matches multiple known gists", input)
+		}
+		if !allowNetwork {
+			return "", fmt.Errorf("cannot resolve unknown owner/name %s while offline", input)
 		}
 
-		live, err := findOwnerNameLive(ctx, parts[0], namePart)
+		live, err := findOwnerNameLive(ctx, parts[0], namePart, paths)
 		if err != nil {
-			return "", "", err
+			return "", err
 		}
 		if len(live) == 1 {
-			return live[0].ID, live[0].Owner, nil
+			return live[0].ID, nil
 		}
 		if len(live) > 1 {
-			return "", "", fmt.Errorf("owner/name %s matches multiple gists", input)
+			return "", fmt.Errorf("owner/name %s matches multiple gists", input)
 		}
-		return "", "", fmt.Errorf("could not find %q among %s's gists", parts[1], parts[0])
+		return "", fmt.Errorf("could not find %q among %s's gists", parts[1], parts[0])
 	}
 
 	matches := known.Name(st, input)
 	matches = preferPlatform(matches, strings.ToLower(input))
 	if len(matches) == 1 {
-		return matches[0].ID, matches[0].Owner, nil
+		return matches[0].ID, nil
 	}
 	if len(matches) > 1 {
-		return "", "", fmt.Errorf("name %q matches multiple known gists (use owner/name or --as)", input)
+		return "", fmt.Errorf("name %q matches multiple known gists (use owner/name or --as)", input)
 	}
-	return "", "", fmt.Errorf("could not resolve %q as a gist id, URL, owner/gist, or known name (run `gixt add <target> --as <name>` to remember it)", input)
+	return "", fmt.Errorf("could not resolve %q as a gist id, URL, owner/gist, or known name (run `gixt add <target> --as <name>` to remember it)", input)
 }
 
 func entryMatchesName(e known.Entry, targetLower string) bool {
@@ -81,11 +84,7 @@ func entryMatchesName(e known.Entry, targetLower string) bool {
 }
 
 // findOwnerNameLive resolves owner/name against GitHub live.
-func findOwnerNameLive(ctx context.Context, owner, nameLower string) ([]known.Entry, error) {
-	paths, err := ensurePaths("")
-	if err != nil {
-		return nil, err
-	}
+func findOwnerNameLive(ctx context.Context, owner, nameLower string, paths config.Paths) ([]known.Entry, error) {
 	client := gist.New(loadToken(paths.AuthFile))
 	items, err := client.ListForOwner(ctx, owner, 100, 5)
 	if err != nil {

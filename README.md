@@ -16,10 +16,12 @@ gixt run <gist-name> [-- <args>]
 
 - Run any gist by name, ID, URL, or `owner/gist`. No setup needed for one-offs.
 - Remember gists you use with `gixt add` (or `gixt run --add`) so they get a friendly name.
-- Trust-on-first-use per commit: you are prompted once per gist revision, and a changed revision prompts again.
-- Inspect what will run with `--view` and `--dry-run`.
+- Pin a gist to a fixed revision with `gixt pin`; metadata updates and cache pruning preserve it.
+- Trust-on-first-use per commit: changed revisions prompt again. `gixt trust mine` explicitly snapshots your current gists.
+- Inspect with `--view` and `--dry-run` without changing trust approvals.
+- Content cache on by default (ETag/304, retaining latest and pinned revisions); `--no-cache` opts out.
 - No `gh` dependency; public gists work without any token.
-- Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated. The worse pattern on internet (`gixt --view <target> | sh`) just works.
+- Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated.
 
 ## Quick start
 
@@ -29,7 +31,7 @@ gixt run <gist-name> [-- <args>]
 
 ### Option 1: Download prebuilt binary
 
-- Go to the [releases page](https://github.com/leolaurindo/gixt-cli/releases) and download the appropriate binary for your OS.
+- Go to the [releases page](https://github.com/leolaurindo/gixt/releases) and download the appropriate binary for your OS.
 
 ### Option 2: Build
 
@@ -82,6 +84,14 @@ gixt run --python .venv/bin/python app.py
 # inspect before running
 gixt run --view leolaurindo/hello-world
 gixt run --dry-run ssh
+
+# pin a gist to its current revision so runs are stable
+gixt pin ssh
+gixt pin list
+
+# approve all of your gists at their current commits
+gixt trust mine
+gixt trust list
 ```
 
 ## Trust model
@@ -89,37 +99,22 @@ gixt run --dry-run ssh
 gixt uses **trust-on-first-use keyed by commit**:
 
 - The first time you run a gist, you are prompted (owner, description, commit, files). On `y`, that exact commit is recorded as trusted.
-- Running the same commit again never re-prompts.
-- If the gist has a new commit, you are prompted again.
-- Your own gists are trusted automatically; `-y` skips the prompt for one run.
-- Non-interactive runs (e.g. piped) refuse to prompt and tell you to pass `-y`.
-
-## Command tree
-
-```text
-gixt run <target> [-- <args>]      # primary
-gixt <target> [-- <args>]          # root shortcut
-gixt add <id|url|owner/gist> [--as <name>]
-gixt add owner <login>
-gixt remove <target> | owner <login>
-gixt list | refresh | clear
-gixt gist show <target> | set-description <target> <text> | clone <target> | fork <target>
-gixt cache list | prune | clear
-gixt config get [key] | set <key> <value> | unset <key>
-gixt auth login | status | logout
-gixt self version | update-check
-```
+- Running the currently approved commit again does not re-prompt.
+- If the gist has a new commit, you are prompted again — even for your own gists. That way a changed gist can't run silently.
+- `gixt trust mine` explicitly snapshots and approves the exact current commit of every gist you own. Later changes still prompt.
+- Inspect approvals with `gixt trust list`; revoke them with `gixt trust remove <target>` or `gixt trust clear`.
+- `-y` skips the prompt for one run; non-interactive runs refuse to prompt and tell you to pass `-y`.
 
 ## Check the docs
 
-- [CLI usage and resolution details](docs/cli-usage.md)
+- [CLI usage, command tree, and resolution details](docs/cli-usage.md)
 - [Caching and index locations/modes](docs/caching-and-index.md)
 - [Trust model and safety](docs/trust-and-security.md)
 
 ## Uninstall
 
 - Delete the installed binary.
-- Remove config/cache dirs to clear known gists, settings, trust, and cached contents:
+- Remove config/cache dirs to clear known gists, trust approvals, auth, and cached contents:
   - Windows: config `%APPDATA%\gixt`, cache `%LOCALAPPDATA%\gixt`
   - macOS: config `~/Library/Application Support/gixt`, cache `~/Library/Caches/gixt`
   - Linux: config `~/.config/gixt`, cache `~/.cache/gixt`

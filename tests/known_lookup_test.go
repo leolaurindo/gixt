@@ -28,7 +28,7 @@ func TestNameMatchesAliasAndFilename(t *testing.T) {
 
 func TestUpsertReplacesById(t *testing.T) {
 	st := known.Store{Entries: []known.Entry{
-		{ID: "id1", Description: "old", Filenames: []string{"main.py"}, Owner: "me"},
+		{ID: "id1", Description: "old", Filenames: []string{"main.py"}, Pin: "abc", Owner: "me"},
 	}}
 	known.Upsert(&st, known.Entry{ID: "id1", Description: "new", Filenames: []string{"main.py", "extra.txt"}, Owner: "me"})
 	if len(st.Entries) != 1 {
@@ -36,6 +36,9 @@ func TestUpsertReplacesById(t *testing.T) {
 	}
 	if st.Entries[0].Description != "new" {
 		t.Fatalf("expected entry replaced, got %+v", st.Entries[0])
+	}
+	if st.Entries[0].Pin != "abc" {
+		t.Fatalf("expected pin preserved, got %+v", st.Entries[0])
 	}
 
 	known.Upsert(&st, known.Entry{ID: "id2", Filenames: []string{"a.py"}, Owner: "you"})

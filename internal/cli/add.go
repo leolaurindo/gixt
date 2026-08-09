@@ -32,12 +32,12 @@ func newAddCmd() *cobra.Command {
 }
 
 func addGist(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths, true)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func addGist(cmd *cobra.Command, args []string) error {
 }
 
 func addOwner(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -81,9 +81,20 @@ func saveKnown(paths config.Paths, mutate func(*known.Store)) error {
 }
 
 func replaceOwner(entries []known.Entry, owner string, fresh []known.Entry) []known.Entry {
+	pins := make(map[string]string)
+	freshIDs := make(map[string]bool, len(fresh))
+	for _, e := range entries {
+		if strings.EqualFold(e.Owner, owner) && e.Pin != "" {
+			pins[e.ID] = e.Pin
+		}
+	}
+	for i := range fresh {
+		fresh[i].Pin = pins[fresh[i].ID]
+		freshIDs[fresh[i].ID] = true
+	}
 	var kept []known.Entry
 	for _, e := range entries {
-		if !strings.EqualFold(e.Owner, owner) {
+		if !strings.EqualFold(e.Owner, owner) || (e.Pin != "" && !freshIDs[e.ID]) {
 			kept = append(kept, e)
 		}
 	}
@@ -97,7 +108,7 @@ func toKnownEntry(g gist.Gist, alias string) known.Entry {
 		Filenames:   mapFileNames(g.Files),
 		Alias:       alias,
 		UpdatedAt:   g.UpdatedAt,
-		Owner:       gist.GuessOwner(g),
+		Owner:       g.Owner.Login,
 	}
 }
 
