@@ -50,6 +50,7 @@ type ListItem struct {
 	Description string          `json:"description"`
 	Files       map[string]File `json:"files"`
 	Owner       Owner           `json:"owner"`
+	History     []HistoryEntry  `json:"history"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 

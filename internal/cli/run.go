@@ -104,16 +104,12 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return viewFiles(meta, workDir)
 	}
 
-	trusted, err := isTrusted(ctx, paths, client, id, meta)
+	store, err := trust.Load(paths.TrustFile)
 	if err != nil {
 		return err
 	}
-	if !trusted && !o.yes {
+	if !store.Trusted(id, meta.SHA) && !o.yes {
 		if err := promptTrust(meta); err != nil {
-			return err
-		}
-		store, err := trust.Load(paths.TrustFile)
-		if err != nil {
 			return err
 		}
 		store.Trust(id, meta.SHA, meta.Owner)
@@ -172,27 +168,6 @@ func rememberGist(paths config.Paths, id string, m cache.Meta, alias string) err
 			Owner:       m.Owner,
 		})
 	})
-}
-
-// isTrusted reports whether the gist at this commit can run without a prompt:
-// TOFU (previously approved commit), auto-trust of your own gists, or -y.
-func isTrusted(ctx context.Context, paths config.Paths, client *gist.Client, id string, m cache.Meta) (bool, error) {
-	store, err := trust.Load(paths.TrustFile)
-	if err != nil {
-		return false, err
-	}
-	if store.Trusted(id, m.SHA) {
-		return true, nil
-	}
-	if m.Owner != "" && client.HasToken() {
-		settings, err := config.LoadSettings(paths.Settings)
-		if err == nil && settings.Mine {
-			if me, err := client.CurrentUser(ctx); err == nil && strings.EqualFold(me, m.Owner) {
-				return true, nil
-			}
-		}
-	}
-	return false, nil
 }
 
 // obtain makes the gist available on disk and returns its work dir + cache metadata.
