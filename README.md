@@ -29,7 +29,7 @@ gixt run <gist-name> [-- <args>]
 
 ### Option 1: Download prebuilt binary
 
-- Go to the [releases page](https://github.com/leolaurindo/gixt-cli/releases) and download the appropriate binary for your OS.
+- Go to the [releases page](https://github.com/leolaurindo/gixt/releases) and download the appropriate binary for your OS.
 
 ### Option 2: Build
 
