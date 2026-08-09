@@ -71,12 +71,18 @@ func listRefresh(cmd *cobra.Command, args []string) error {
 		g, err := client.Fetch(cmd.Context(), e.ID, "")
 		if err != nil {
 			if gist.IsNotFound(err) {
+				if e.Pin != "" {
+					logf("retained %s (pinned revision)", e.ID)
+					kept = append(kept, e)
+					continue
+				}
 				logf("removed %s (deleted)", e.ID)
 				continue
 			}
 			return err
 		}
 		g2 := toKnownEntry(g, e.Alias)
+		g2.Pin = e.Pin
 		kept = append(kept, g2)
 	}
 	st.Entries = kept

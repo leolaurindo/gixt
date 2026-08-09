@@ -13,17 +13,17 @@ import (
 )
 
 // pinnedRef returns the pinned revision for a gist, or "" if not pinned.
-func pinnedRef(paths config.Paths, id string) string {
+func pinnedRef(paths config.Paths, id string) (string, error) {
 	st, err := known.Load(paths.KnownFile)
 	if err != nil {
-		return ""
+		return "", err
 	}
 	for _, e := range st.Entries {
 		if e.ID == id && e.Pin != "" {
-			return e.Pin
+			return e.Pin, nil
 		}
 	}
-	return ""
+	return "", nil
 }
 
 func newPinCmd() *cobra.Command {
@@ -51,18 +51,17 @@ func pinGist(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	sha := ""
+	ref := ""
 	if len(args) == 2 {
-		sha = args[1]
-	} else {
-		g, err := client.Fetch(cmd.Context(), id, "")
-		if err != nil {
-			return err
-		}
-		sha = g.LatestVersion()
-		if sha == "" {
-			return fmt.Errorf("could not determine the current revision of %s", id)
-		}
+		ref = args[1]
+	}
+	g, err := client.Fetch(cmd.Context(), id, ref)
+	if err != nil {
+		return err
+	}
+	sha := g.LatestVersion()
+	if sha == "" {
+		return fmt.Errorf("could not determine the requested revision of %s", id)
 	}
 
 	st, err := known.Load(paths.KnownFile)
@@ -77,10 +76,6 @@ func pinGist(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if entry == nil {
-		g, err := client.Fetch(cmd.Context(), id, "")
-		if err != nil {
-			return err
-		}
 		st.Entries = append(st.Entries, toKnownEntry(g, ""))
 		entry = &st.Entries[len(st.Entries)-1]
 	}

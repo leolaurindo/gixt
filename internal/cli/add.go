@@ -81,9 +81,20 @@ func saveKnown(paths config.Paths, mutate func(*known.Store)) error {
 }
 
 func replaceOwner(entries []known.Entry, owner string, fresh []known.Entry) []known.Entry {
+	pins := make(map[string]string)
+	freshIDs := make(map[string]bool, len(fresh))
+	for _, e := range entries {
+		if strings.EqualFold(e.Owner, owner) && e.Pin != "" {
+			pins[e.ID] = e.Pin
+		}
+	}
+	for i := range fresh {
+		fresh[i].Pin = pins[fresh[i].ID]
+		freshIDs[fresh[i].ID] = true
+	}
 	var kept []known.Entry
 	for _, e := range entries {
-		if !strings.EqualFold(e.Owner, owner) {
+		if !strings.EqualFold(e.Owner, owner) || (e.Pin != "" && !freshIDs[e.ID]) {
 			kept = append(kept, e)
 		}
 	}

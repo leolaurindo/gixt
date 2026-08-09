@@ -87,6 +87,7 @@ func filenameMatches(targetLower, filename string) bool {
 func Upsert(s *Store, e Entry) {
 	for i := range s.Entries {
 		if s.Entries[i].ID == e.ID {
+			e.Pin = s.Entries[i].Pin
 			s.Entries[i] = e
 			return
 		}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/leolaurindo/gixt/internal/cache"
 	"github.com/leolaurindo/gixt/internal/config"
+	"github.com/leolaurindo/gixt/internal/known"
 )
 
 func newCacheCmd() *cobra.Command {
@@ -51,6 +52,16 @@ func cachePrune(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	root := paths.CacheDir
+	st, err := known.Load(paths.KnownFile)
+	if err != nil {
+		return err
+	}
+	pins := make(map[string]string)
+	for _, e := range st.Entries {
+		if e.Pin != "" {
+			pins[e.ID] = e.Pin
+		}
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return err
@@ -60,7 +71,7 @@ func cachePrune(cmd *cobra.Command, args []string) error {
 			continue
 		}
 		if _, m, ok := cache.Latest(root, e.Name()); ok {
-			if err := cache.Prune(root, e.Name(), m.SHA); err != nil {
+			if err := cache.Prune(root, e.Name(), m.SHA, pins[e.Name()]); err != nil {
 				return err
 			}
 		}

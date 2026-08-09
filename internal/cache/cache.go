@@ -112,16 +112,30 @@ func Latest(cacheRoot, gistID string) (string, Meta, bool) {
 	return best, bestMan, true
 }
 
-// Prune removes every cached revision of a gist except keepSHA.
-func Prune(cacheRoot, gistID, keepSHA string) error {
+func Revision(cacheRoot, gistID, sha string) (string, Meta, bool) {
+	dir := Dir(cacheRoot, gistID, sha)
+	m, err := LoadMeta(MetaPath(dir))
+	if err != nil || m.SHA != sha {
+		return "", Meta{}, false
+	}
+	return dir, m, true
+}
+
+// Prune removes every cached revision of a gist except the requested SHAs.
+func Prune(cacheRoot, gistID string, keepSHAs ...string) error {
 	root := filepath.Join(cacheRoot, cleaner.ReplaceAllString(gistID, "-"))
-	keep := cleaner.ReplaceAllString(keepSHA, "-")
+	keep := make(map[string]bool, len(keepSHAs))
+	for _, sha := range keepSHAs {
+		if sha != "" {
+			keep[cleaner.ReplaceAllString(sha, "-")] = true
+		}
+	}
 	entries, err := os.ReadDir(root)
 	if err != nil {
 		return nil
 	}
 	for _, e := range entries {
-		if e.IsDir() && e.Name() != keep {
+		if e.IsDir() && !keep[e.Name()] {
 			if err := os.RemoveAll(filepath.Join(root, e.Name())); err != nil {
 				return err
 			}

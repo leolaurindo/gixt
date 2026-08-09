@@ -91,9 +91,13 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return err
 	}
 
+	pin, err := pinnedRef(paths, id)
+	if err != nil {
+		return err
+	}
 	ref := o.ref
 	if ref == "" {
-		ref = pinnedRef(paths, id)
+		ref = pin
 	}
 
 	client := gist.New(loadToken(paths.AuthFile))
@@ -148,7 +152,7 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 	err = runner.Execute(runCtx, execDir, cmd)
 	if err == nil {
 		if !fromCache && !o.noCache {
-			if err := cache.Prune(paths.CacheDir, id, meta.SHA); err != nil {
+			if err := cache.Prune(paths.CacheDir, id, meta.SHA, pin); err != nil {
 				return err
 			}
 		}
@@ -184,12 +188,19 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 		return obtainTemp(ctx, client, id, ref)
 	}
 	if offline {
-		dir, m, ok := cache.Latest(paths.CacheDir, id)
-		if !ok {
-			return "", cache.Meta{}, false, fmt.Errorf("no cached copy of %s; run once online first", id)
+		var dir string
+		var m cache.Meta
+		var ok bool
+		if ref != "" {
+			dir, m, ok = cache.Revision(paths.CacheDir, id, ref)
+		} else {
+			dir, m, ok = cache.Latest(paths.CacheDir, id)
 		}
-		if ref != "" && m.SHA != ref {
-			return "", cache.Meta{}, false, fmt.Errorf("cached revision %s does not match --ref %s", m.SHA, ref)
+		if !ok {
+			if ref != "" {
+				return "", cache.Meta{}, false, fmt.Errorf("no cached revision of %s matching %s; run it online first", id, ref)
+			}
+			return "", cache.Meta{}, false, fmt.Errorf("no cached copy of %s; run once online first", id)
 		}
 		return dir, m, true, nil
 	}
