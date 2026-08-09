@@ -2,6 +2,7 @@ package gist
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -91,6 +92,37 @@ func TestAuthHeaderSent(t *testing.T) {
 	}
 	if user != "me" {
 		t.Fatalf("unexpected user: %s", user)
+	}
+}
+
+func TestListMineRequiresAuthAndPaginates(t *testing.T) {
+	requests := 0
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requests++
+		if r.URL.Path != "/gists" || r.Header.Get("Authorization") != "Bearer sekret" {
+			t.Fatalf("unexpected request: %s auth=%q", r.URL.Path, r.Header.Get("Authorization"))
+		}
+		if r.URL.Query().Get("page") == "1" {
+			items := make([]string, 100)
+			for i := range items {
+				items[i] = fmt.Sprintf(`{"id":"%d"}`, i)
+			}
+			fmt.Fprintf(w, "[%s]", strings.Join(items, ","))
+			return
+		}
+		w.Write([]byte(`[{"id":"last"}]`))
+	}))
+	defer srv.Close()
+
+	if _, err := newWithBase(srv.URL, "").ListMine(context.Background(), 100); err == nil {
+		t.Fatal("expected authentication error")
+	}
+	items, err := newWithBase(srv.URL, "sekret").ListMine(context.Background(), 100)
+	if err != nil {
+		t.Fatalf("ListMine error: %v", err)
+	}
+	if len(items) != 101 || requests != 2 {
+		t.Fatalf("got %d items in %d requests", len(items), requests)
 	}
 }
 

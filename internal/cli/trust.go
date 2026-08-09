@@ -52,13 +52,9 @@ func trustMine(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	me, err := client.CurrentUser(cmd.Context())
+	items, err := client.ListMine(cmd.Context(), 100)
 	if err != nil {
-		return fmt.Errorf("`trust mine` requires authentication: %w (run `gixt auth login`)", err)
-	}
-	items, err := client.ListForOwner(cmd.Context(), me, 100, 5)
-	if err != nil {
-		return err
+		return fmt.Errorf("trust mine: %w", err)
 	}
 	store, err := trust.Load(paths.TrustFile)
 	if err != nil {
@@ -66,10 +62,15 @@ func trustMine(cmd *cobra.Command, args []string) error {
 	}
 	approved := 0
 	for _, it := range items {
-		if len(it.History) == 0 || it.History[0].Version == "" {
-			continue
+		g, err := client.Fetch(cmd.Context(), it.ID, "")
+		if err != nil {
+			return fmt.Errorf("snapshot gist %s: %w", it.ID, err)
 		}
-		store.Trust(it.ID, it.History[0].Version, it.Owner.Login)
+		sha := g.LatestVersion()
+		if sha == "" {
+			return fmt.Errorf("could not determine the current revision of %s", it.ID)
+		}
+		store.Trust(g.ID, sha, g.Owner.Login)
 		approved++
 	}
 	if err := trust.Save(paths.TrustFile, store); err != nil {

@@ -50,7 +50,6 @@ type ListItem struct {
 	Description string          `json:"description"`
 	Files       map[string]File `json:"files"`
 	Owner       Owner           `json:"owner"`
-	History     []HistoryEntry  `json:"history"`
 	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
@@ -219,15 +218,19 @@ func (c *Client) ListForOwner(ctx context.Context, owner string, perPage, maxPag
 	return c.list(ctx, fmt.Sprintf("/users/%s/gists", owner), perPage, maxPages)
 }
 
+func (c *Client) ListMine(ctx context.Context, perPage int) ([]ListItem, error) {
+	if c.token == "" {
+		return nil, errors.New("this action requires authentication; run `gixt auth login`")
+	}
+	return c.list(ctx, "/gists", perPage, 0)
+}
+
 func (c *Client) list(ctx context.Context, base string, perPage, maxPages int) ([]ListItem, error) {
 	if perPage <= 0 {
 		perPage = 50
 	}
-	if maxPages <= 0 {
-		maxPages = 1
-	}
 	var all []ListItem
-	for page := 1; page <= maxPages; page++ {
+	for page := 1; maxPages == 0 || page <= maxPages; page++ {
 		body, _, _, err := c.get(ctx, fmt.Sprintf("%s?per_page=%d&page=%d", base, perPage, page), "")
 		if err != nil {
 			return nil, err
