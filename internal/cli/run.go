@@ -80,6 +80,10 @@ func runTarget(cmd *cobra.Command, args []string) error {
 
 func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded []string) error {
 	originalCWD, _ := os.Getwd()
+	if o.offline && o.noCache {
+		logf("warning: no-cache mode ignored with --offline")
+		o.noCache = false
+	}
 
 	paths, err := ensurePaths("")
 	if err != nil {
@@ -113,20 +117,6 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return viewFiles(meta, workDir)
 	}
 
-	store, err := trust.Load(paths.TrustFile)
-	if err != nil {
-		return err
-	}
-	if !store.Trusted(id, meta.SHA) && !o.yes {
-		if err := promptTrust(meta); err != nil {
-			return err
-		}
-		store.Trust(id, meta.SHA, meta.Owner)
-		if err := trust.Save(paths.TrustFile, store); err != nil {
-			return err
-		}
-	}
-
 	cmd, reason, err := runner.BuildCommand(workDir, meta.Files, forwarded, o.python)
 	if err != nil {
 		return err
@@ -135,6 +125,21 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 	if o.dryRun {
 		fmt.Printf("command (%s): %s\n", reason, strings.Join(cmd, " "))
 		return nil
+	}
+	if !o.yes {
+		store, err := trust.Load(paths.TrustFile)
+		if err != nil {
+			return err
+		}
+		if !store.Trusted(id, meta.SHA) {
+			if err := promptTrust(meta); err != nil {
+				return err
+			}
+			store.Trust(id, meta.SHA, meta.Owner)
+			if err := trust.Save(paths.TrustFile, store); err != nil {
+				return err
+			}
+		}
 	}
 
 	execDir := originalCWD
