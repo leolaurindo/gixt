@@ -30,16 +30,16 @@ gixt run <gist-name> [-- <args>]
 Linux and macOS:
 
 ```sh
-curl -fsSL https://get.leolaurindo.com/gixt.sh | sh
+curl -fsSL https://gixt.leolaurindo.com/install.sh | sh
 ```
 
 Windows PowerShell:
 
 ```powershell
-irm https://get.leolaurindo.com/gixt.ps1 | iex
+irm https://gixt.leolaurindo.com/install.ps1 | iex
 ```
 
-The installer downloads the matching GitHub release, verifies its SHA-256 checksum, and installs it for the current user. Review the [shell](docs/gixt.sh) or [PowerShell](docs/gixt.ps1) script before running it if preferred.
+The installer downloads the matching GitHub release, verifies its SHA-256 checksum, and installs it for the current user. Review the [shell](docs/install.sh) or [PowerShell](docs/install.ps1) script before running it if preferred.
 
 ### Option 2: Download a prebuilt binary
 
