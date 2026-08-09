@@ -16,10 +16,10 @@ gixt run <gist-name> [-- <args>]
 
 - Run any gist by name, ID, URL, or `owner/gist`. No setup needed for one-offs.
 - Remember gists you use with `gixt add` (or `gixt run --add`) so they get a friendly name.
-- Pin a gist to a fixed revision with `gixt pin`; `gixt run` honors it silently.
-- Trust-on-first-use per commit: prompted once per revision, re-prompted when it changes. Approve all of your gists at once with `gixt trust mine`.
-- Inspect what will run with `--view` and `--dry-run`.
-- Content cache on by default (ETag/304, pruned to latest per gist); `--no-cache` opts out.
+- Pin a gist to a fixed revision with `gixt pin`; metadata updates and cache pruning preserve it.
+- Trust-on-first-use per commit: changed revisions prompt again. `gixt trust mine` explicitly snapshots your current gists.
+- Inspect with `--view` and `--dry-run` without changing trust approvals.
+- Content cache on by default (ETag/304, retaining latest and pinned revisions); `--no-cache` opts out.
 - No `gh` dependency; public gists work without any token.
 - Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated.
 
@@ -99,31 +99,15 @@ gixt trust list
 gixt uses **trust-on-first-use keyed by commit**:
 
 - The first time you run a gist, you are prompted (owner, description, commit, files). On `y`, that exact commit is recorded as trusted.
-- Running the same commit again never re-prompts.
+- Running the currently approved commit again does not re-prompt.
 - If the gist has a new commit, you are prompted again — even for your own gists. That way a changed gist can't run silently.
-- Approve all of your gists at their current commits with `gixt trust mine`; inspect with `gixt trust list`, revoke with `gixt trust remove <target>`.
+- `gixt trust mine` explicitly snapshots and approves the exact current commit of every gist you own. Later changes still prompt.
+- Inspect approvals with `gixt trust list`; revoke them with `gixt trust remove <target>` or `gixt trust clear`.
 - `-y` skips the prompt for one run; non-interactive runs refuse to prompt and tell you to pass `-y`.
-
-## Command tree
-
-```text
-gixt run <target> [-- <args>]      # primary
-gixt <target> [-- <args>]          # root shortcut
-gixt add <id|url|owner/gist> [--as <name>]
-gixt add owner <login>
-gixt remove <target> | owner <login>
-gixt list | refresh | clear
-gixt trust mine | list | remove <target> | clear
-gixt pin <target> [<sha>] | list | remove <target> | clear
-gixt gist show <target> | set-description <target> <text> | clone <target> | fork <target>
-gixt cache list | prune | clear
-gixt auth login | status | logout
-gixt self version | update-check
-```
 
 ## Check the docs
 
-- [CLI usage and resolution details](docs/cli-usage.md)
+- [CLI usage, command tree, and resolution details](docs/cli-usage.md)
 - [Caching and index locations/modes](docs/caching-and-index.md)
 - [Trust model and safety](docs/trust-and-security.md)
 

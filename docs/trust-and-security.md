@@ -1,6 +1,6 @@
 # Trust Model
 
-gixt executes code from gists. Trust is **trust-on-first-use (TOFU) keyed by commit**: an approved revision never re-prompts; a changed revision always does. There is no "trust my own gists always" special case.
+gixt executes code from gists. Trust is **trust-on-first-use (TOFU) keyed by commit**: the currently approved revision does not re-prompt, while a changed revision does. There is no "trust my own gists always" special case.
 
 Approvals are stored in `trust.json` under your gixt config directory.
 
@@ -13,12 +13,14 @@ Approvals are stored in `trust.json` under your gixt config directory.
 
 ## Approving your own gists
 
-Running your own gists still prompts on first use (or after a change). To approve all of your gists at their current commits:
+Running your own gists still prompts on first use or after a change. To take an explicit snapshot of all gists you currently own:
 
 ```sh
 gixt auth login      # required once
-gixt trust mine      # approve the current commit of every gist you own
+gixt trust mine      # fetch and approve every exact current commit
 ```
+
+The snapshot includes public and secret gists, and the trust store is saved only after every revision is fetched. A gist changed after the snapshot has a different commit and prompts again. Taking another snapshot replaces the previously approved commit for each gist.
 
 Managing approvals:
 
@@ -36,8 +38,8 @@ error: refusing to prompt on non-interactive input; pass -y to run untrusted cod
 
 ## Inspecting before you run
 
-- `gixt run --view <target>` prints the gist files without executing anything.
-- `gixt run --dry-run <target>` shows the exact command gixt would run.
+- `gixt run --view <target>` prints the gist files without executing or changing trust.
+- `gixt run --dry-run <target>` shows the command without executing or changing trust.
 - `gixt gist show <target>` shows metadata and the file list.
 
 ## Clearing trust
