@@ -25,27 +25,41 @@ gixt run <gist-name> [-- <args>]
 
 ## Quick start
 
-### Prerequisites
+### Option 1: Install without Go
 
-- Go 1.21+ to build from source.
+Linux and macOS:
 
-### Option 1: Download prebuilt binary
+```sh
+curl -fsSL https://get.leolaurindo.com/gixt.sh | sh
+```
+
+Windows PowerShell:
+
+```powershell
+irm https://get.leolaurindo.com/gixt.ps1 | iex
+```
+
+The installer downloads the matching GitHub release, verifies its SHA-256 checksum, and installs it for the current user. Review the [shell](docs/gixt.sh) or [PowerShell](docs/gixt.ps1) script before running it if preferred.
+
+### Option 2: Download a prebuilt binary
 
 - Go to the [releases page](https://github.com/leolaurindo/gixt/releases) and download the appropriate binary for your OS.
 
-### Option 2: Build
+### Option 3: Install via `go install`
+
+Requires Go 1.21 or newer:
+
+```sh
+go install github.com/leolaurindo/gixt/cmd/gixt@latest
+```
+
+### Option 4: Build from source
 
 ```sh
 go build -o bin/gixt ./cmd/gixt
 ```
 
-For both options, place `gixt` (macOS/Linux) or `gixt.exe` (Windows) somewhere on your `PATH` (e.g., `~/.local/bin`, `/usr/local/bin`, or `%USERPROFILE%\bin`).
-
-### Option 3: Install via `go install`
-
-```sh
-go install github.com/leolaurindo/gixt/cmd/gixt@latest
-```
+For manual downloads and source builds, place `gixt` (macOS/Linux) or `gixt.exe` (Windows) somewhere on your `PATH`.
 
 ### First runs
 
