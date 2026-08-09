@@ -5,11 +5,15 @@ on:
     branches: [main]
     paths:
       - "**/*.go"
+      - ".github/workflows/*.yml"
+      - "docs/gixt.*"
       - go.mod
       - go.sum
   pull_request:
     paths:
       - "**/*.go"
+      - ".github/workflows/*.yml"
+      - "docs/gixt.*"
       - go.mod
       - go.sum
   workflow_dispatch:
@@ -44,6 +48,15 @@ jobs:
         run: |
           go mod tidy
           git diff --exit-code -- go.mod go.sum
+
+      - name: Shell installer syntax
+        if: matrix.os == 'ubuntu-latest'
+        run: sh -n docs/gixt.sh
+
+      - name: PowerShell installer syntax
+        if: matrix.os == 'windows-latest'
+        shell: powershell
+        run: '[scriptblock]::Create((Get-Content docs/gixt.ps1 -Raw)) | Out-Null'
 
       - name: Tests
         run: go test ./...

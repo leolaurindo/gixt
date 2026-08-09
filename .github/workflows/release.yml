@@ -96,8 +96,14 @@ jobs:
           ' CHANGELOG.md > RELEASE_NOTES.md
           test -s RELEASE_NOTES.md
 
+      - name: Generate checksums
+        working-directory: dist
+        run: sha256sum gixt_* > checksums.txt
+
       - name: Publish release assets
         uses: softprops/action-gh-release@v2.0.1
         with:
           body_path: RELEASE_NOTES.md
-          files: dist/gixt_*.*
+          files: |
+            dist/gixt_*.*
+            dist/checksums.txt
