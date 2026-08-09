@@ -30,7 +30,7 @@ func removeGist(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	id, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths, true)
 	if err != nil {
 		return err
 	}

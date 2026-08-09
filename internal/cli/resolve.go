@@ -15,7 +15,7 @@ import (
 // resolveTarget maps a user input to a gist ID: direct gist ID/URL, a known
 // name/alias, or owner/gist (from the known store, falling back to a live
 // lookup).
-func resolveTarget(ctx context.Context, input string, paths config.Paths) (string, error) {
+func resolveTarget(ctx context.Context, input string, paths config.Paths, allowNetwork bool) (string, error) {
 	id := gist.ExtractID(input)
 	if gist.IsLikelyGistID(id) {
 		return id, nil
@@ -42,6 +42,9 @@ func resolveTarget(ctx context.Context, input string, paths config.Paths) (strin
 		}
 		if len(matches) > 1 {
 			return "", fmt.Errorf("owner/name %s matches multiple known gists", input)
+		}
+		if !allowNetwork {
+			return "", fmt.Errorf("cannot resolve unknown owner/name %s while offline", input)
 		}
 
 		live, err := findOwnerNameLive(ctx, parts[0], namePart, paths)

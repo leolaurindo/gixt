@@ -47,7 +47,7 @@ func pinGist(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	id, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths, true)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func pinRemove(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	id, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths, true)
 	if err != nil {
 		return err
 	}

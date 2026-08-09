@@ -37,7 +37,7 @@ func addGist(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	id, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths, true)
 	if err != nil {
 		return err
 	}

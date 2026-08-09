@@ -19,7 +19,7 @@ func newCacheCmd() *cobra.Command {
 	}
 	c.AddCommand(
 		&cobra.Command{Use: "list", Short: "list cached gists", Args: cobra.NoArgs, RunE: cacheList},
-		&cobra.Command{Use: "prune", Short: "remove old revisions, keeping only the latest per gist", Args: cobra.NoArgs, RunE: cachePrune},
+		&cobra.Command{Use: "prune", Short: "remove old revisions, keeping latest and pinned revisions", Args: cobra.NoArgs, RunE: cachePrune},
 		&cobra.Command{Use: "clear", Short: "remove all cached gist contents", Args: cobra.NoArgs, RunE: cacheClear},
 	)
 	return c

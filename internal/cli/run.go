@@ -91,7 +91,7 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return err
 	}
 
-	id, err := resolveTarget(ctx, target, paths)
+	id, err := resolveTarget(ctx, target, paths, !o.offline)
 	if err != nil {
 		return err
 	}
