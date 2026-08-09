@@ -36,7 +36,7 @@ func newListCmd() *cobra.Command {
 }
 
 func listGists(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -57,7 +57,7 @@ func listGists(cmd *cobra.Command, args []string) error {
 }
 
 func listRefresh(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -90,7 +90,7 @@ func listRefresh(cmd *cobra.Command, args []string) error {
 }
 
 func listClear(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

@@ -68,8 +68,8 @@ func newRootCmd() *cobra.Command {
 	return root
 }
 
-func ensurePaths(cacheOverride string) (config.Paths, error) {
-	paths, err := config.Discover(cacheOverride)
+func ensurePaths() (config.Paths, error) {
+	paths, err := config.Discover()
 	if err != nil {
 		return config.Paths{}, err
 	}
@@ -88,13 +88,6 @@ func PrintError(err error) {
 		return
 	}
 	fmt.Fprintf(os.Stderr, "error: %v\n", err)
-}
-
-func colorize(s, code string) string {
-	if code == "" || os.Getenv("NO_COLOR") != "" || !isTTY(os.Stdout) {
-		return s
-	}
-	return code + s + "\033[0m"
 }
 
 func isTTY(f *os.File) bool {
@@ -170,18 +163,11 @@ func editDistance(a, b string) int {
 			if ar[i-1] == br[j-1] {
 				cost = 0
 			}
-			cur[j] = min(min(cur[j-1]+1, prev[j]+1), prev[j-1]+cost)
+			cur[j] = min(cur[j-1]+1, prev[j]+1, prev[j-1]+cost)
 		}
 		prev = cur
 	}
 	return prev[len(br)]
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func mustBool(cmd *cobra.Command, name string) bool {

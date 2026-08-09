@@ -37,8 +37,8 @@ func TestFetchAndLatestVersion(t *testing.T) {
 	if g.LatestVersion() != "abc123def456" {
 		t.Fatalf("unexpected version: %s", g.LatestVersion())
 	}
-	if GuessOwner(g) != "me" {
-		t.Fatalf("unexpected owner: %s", GuessOwner(g))
+	if g.Owner.Login != "me" {
+		t.Fatalf("unexpected owner: %s", g.Owner.Login)
 	}
 }
 

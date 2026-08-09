@@ -26,7 +26,7 @@ func newCacheCmd() *cobra.Command {
 }
 
 func cacheList(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func cacheList(cmd *cobra.Command, args []string) error {
 }
 
 func cachePrune(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func cachePrune(cmd *cobra.Command, args []string) error {
 }
 
 func cacheClear(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

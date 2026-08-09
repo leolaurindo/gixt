@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -85,12 +86,12 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		o.noCache = false
 	}
 
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
 
-	id, _, err := resolveTarget(ctx, target, paths)
+	id, err := resolveTarget(ctx, target, paths)
 	if err != nil {
 		return err
 	}
@@ -246,10 +247,10 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 	}
 
 	workDir := cache.Dir(paths.CacheDir, id, sha)
-	if err := cache.EnsureDir(workDir); err != nil {
+	if err := os.MkdirAll(workDir, 0o755); err != nil {
 		return "", cache.Meta{}, false, err
 	}
-	files, reused, err := materializeFiles(ctx, client, g, workDir, false)
+	files, reused, err := materializeFiles(ctx, client, g, workDir)
 	if err != nil {
 		return "", cache.Meta{}, false, err
 	}
@@ -258,9 +259,8 @@ func obtain(ctx context.Context, client *gist.Client, paths config.Paths, id, re
 		GistID:      id,
 		SHA:         sha,
 		Description: g.Description,
-		Owner:       gist.GuessOwner(g),
+		Owner:       g.Owner.Login,
 		Files:       files,
-		Source:      g.HTMLURL,
 		Etag:        newEtag,
 		CreatedAt:   time.Now(),
 	}
@@ -294,7 +294,7 @@ func obtainTemp(ctx context.Context, client *gist.Client, id, ref string) (strin
 	if err != nil {
 		return "", cache.Meta{}, false, err
 	}
-	files, _, err := materializeFiles(ctx, client, g, dir, false)
+	files, _, err := materializeFiles(ctx, client, g, dir)
 	if err != nil {
 		os.RemoveAll(dir)
 		return "", cache.Meta{}, false, err
@@ -303,9 +303,8 @@ func obtainTemp(ctx context.Context, client *gist.Client, id, ref string) (strin
 		GistID:      id,
 		SHA:         sha,
 		Description: g.Description,
-		Owner:       gist.GuessOwner(g),
+		Owner:       g.Owner.Login,
 		Files:       files,
-		Source:      g.HTMLURL,
 		CreatedAt:   time.Now(),
 	}, false, nil
 }
@@ -332,7 +331,7 @@ func promptTrust(m cache.Meta) error {
 
 func viewFiles(m cache.Meta, dir string) error {
 	for _, f := range m.Files {
-		data, err := os.ReadFile(cache.JoinPath(dir, f))
+		data, err := os.ReadFile(filepath.Join(dir, f))
 		if err != nil {
 			return err
 		}

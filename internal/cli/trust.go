@@ -47,7 +47,7 @@ func newTrustCmd() *cobra.Command {
 }
 
 func trustMine(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -81,7 +81,7 @@ func trustMine(cmd *cobra.Command, args []string) error {
 }
 
 func trustList(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -102,11 +102,11 @@ func trustList(cmd *cobra.Command, args []string) error {
 }
 
 func trustRemove(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -122,7 +122,7 @@ func trustRemove(cmd *cobra.Command, args []string) error {
 }
 
 func trustClear(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

@@ -42,12 +42,12 @@ func newPinCmd() *cobra.Command {
 }
 
 func pinGist(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -89,7 +89,7 @@ func pinGist(cmd *cobra.Command, args []string) error {
 }
 
 func pinList(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -111,11 +111,11 @@ func pinList(cmd *cobra.Command, args []string) error {
 }
 
 func pinRemove(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -136,7 +136,7 @@ func pinRemove(cmd *cobra.Command, args []string) error {
 }
 
 func pinClear(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

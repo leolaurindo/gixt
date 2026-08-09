@@ -56,11 +56,11 @@ func newGistCmd() *cobra.Command {
 }
 
 func gistShow(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -70,7 +70,7 @@ func gistShow(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	fmt.Printf("ID:          %s\n", g.ID)
-	fmt.Printf("Owner:       %s\n", gist.GuessOwner(g))
+	fmt.Printf("Owner:       %s\n", g.Owner.Login)
 	fmt.Printf("Description: %s\n", g.Description)
 	fmt.Printf("Updated:     %s\n", g.UpdatedAt.Format(time.RFC3339))
 	fmt.Printf("Revision:    %s\n", g.LatestVersion())
@@ -83,11 +83,11 @@ func gistShow(cmd *cobra.Command, args []string) error {
 }
 
 func gistSetDescription(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -100,11 +100,11 @@ func gistSetDescription(cmd *cobra.Command, args []string) error {
 }
 
 func gistClone(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -124,11 +124,11 @@ func gistClone(cmd *cobra.Command, args []string) error {
 }
 
 func gistFork(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}

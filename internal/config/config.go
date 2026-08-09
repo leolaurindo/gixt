@@ -14,7 +14,7 @@ type Paths struct {
 	TrustFile string
 }
 
-func Discover(cacheOverride string) (Paths, error) {
+func Discover() (Paths, error) {
 	cfgRoot, err := os.UserConfigDir()
 	if err != nil {
 		return Paths{}, fmt.Errorf("detect config dir: %w", err)
@@ -26,13 +26,6 @@ func Discover(cacheOverride string) (Paths, error) {
 
 	cfgDir := filepath.Join(cfgRoot, "gixt")
 	cacheDir := filepath.Join(cacheRoot, "gixt")
-	if cacheOverride != "" {
-		if filepath.IsAbs(cacheOverride) {
-			cacheDir = cacheOverride
-		} else {
-			cacheDir = filepath.Join(cacheRoot, cacheOverride)
-		}
-	}
 
 	return Paths{
 		ConfigDir: cfgDir,

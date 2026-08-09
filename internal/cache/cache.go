@@ -15,7 +15,6 @@ type Meta struct {
 	Description string    `json:"description"`
 	Owner       string    `json:"owner"`
 	Files       []string  `json:"files"`
-	Source      string    `json:"source_url,omitempty"`
 	Etag        string    `json:"etag,omitempty"`
 	CreatedAt   time.Time `json:"created_at"`
 }
@@ -55,15 +54,6 @@ func SaveMeta(path string, m Meta) error {
 	return nil
 }
 
-func PathExists(path string) bool {
-	_, err := os.Stat(path)
-	return err == nil
-}
-
-func EnsureDir(path string) error {
-	return os.MkdirAll(path, 0o755)
-}
-
 func PresentFiles(dir string, files []string) bool {
 	for _, f := range files {
 		if _, err := os.Stat(filepath.Join(dir, f)); err != nil {
@@ -78,10 +68,6 @@ func Shorten(id string) string {
 		return id
 	}
 	return id[:8]
-}
-
-func JoinPath(base string, elems ...string) string {
-	return filepath.Join(append([]string{base}, elems...)...)
 }
 
 // Latest returns the most recently cached (dir, meta) for a gist.

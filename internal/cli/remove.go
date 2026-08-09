@@ -26,11 +26,11 @@ func newRemoveCmd() *cobra.Command {
 }
 
 func removeGist(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func removeGist(cmd *cobra.Command, args []string) error {
 }
 
 func removeOwner(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}

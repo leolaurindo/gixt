@@ -17,11 +17,7 @@ import (
 const apiBase = "https://api.github.com"
 
 type File struct {
-	Filename  string `json:"filename"`
-	Type      string `json:"type"`
-	Language  string `json:"language"`
 	RawURL    string `json:"raw_url"`
-	Size      int    `json:"size"`
 	Truncated bool   `json:"truncated"`
 	Content   string `json:"content"`
 }
@@ -31,8 +27,7 @@ type Owner struct {
 }
 
 type HistoryEntry struct {
-	Version     string    `json:"version"`
-	CommittedAt time.Time `json:"committed_at"`
+	Version string `json:"version"`
 }
 
 type Gist struct {
@@ -99,8 +94,6 @@ func New(token string) *Client {
 func newWithBase(base, token string) *Client {
 	return &Client{hc: &http.Client{Timeout: 30 * time.Second}, base: base, token: token}
 }
-
-func (c *Client) HasToken() bool { return c.token != "" }
 
 // get performs a GET and returns the body, the response headers, and whether
 // the server replied 304 (content unchanged given the If-None-Match header).
@@ -248,7 +241,7 @@ func (c *Client) list(ctx context.Context, base string, perPage, maxPages int) (
 }
 
 func (c *Client) UpdateDescription(ctx context.Context, id string, description string) (Gist, error) {
-	return c.patch(ctx, fmt.Sprintf("/gists/%s", id), map[string]string{"description": description})
+	return c.send(ctx, http.MethodPatch, fmt.Sprintf("/gists/%s", id), map[string]string{"description": description})
 }
 
 func (c *Client) Create(ctx context.Context, files map[string]string, description string, public bool) (Gist, error) {
@@ -262,15 +255,7 @@ func (c *Client) Create(ctx context.Context, files map[string]string, descriptio
 	for name, content := range files {
 		payload["files"].(map[string]any)[name] = map[string]string{"content": content}
 	}
-	return c.post(ctx, "/gists", payload)
-}
-
-func (c *Client) patch(ctx context.Context, path string, payload any) (Gist, error) {
-	return c.send(ctx, http.MethodPatch, path, payload)
-}
-
-func (c *Client) post(ctx context.Context, path string, payload any) (Gist, error) {
-	return c.send(ctx, http.MethodPost, path, payload)
+	return c.send(ctx, http.MethodPost, "/gists", payload)
 }
 
 func (c *Client) send(ctx context.Context, method, path string, payload any) (Gist, error) {
@@ -307,8 +292,6 @@ func (c *Client) send(ctx context.Context, method, path string, payload any) (Gi
 	}
 	return g, nil
 }
-
-func GuessOwner(g Gist) string { return g.Owner.Login }
 
 func IsLikelyGistID(id string) bool {
 	trimmed := strings.TrimSpace(id)

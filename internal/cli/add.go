@@ -32,12 +32,12 @@ func newAddCmd() *cobra.Command {
 }
 
 func addGist(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
 	client := gist.New(loadToken(paths.AuthFile))
-	id, _, err := resolveTarget(cmd.Context(), args[0], paths)
+	id, err := resolveTarget(cmd.Context(), args[0], paths)
 	if err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func addGist(cmd *cobra.Command, args []string) error {
 }
 
 func addOwner(cmd *cobra.Command, args []string) error {
-	paths, err := ensurePaths("")
+	paths, err := ensurePaths()
 	if err != nil {
 		return err
 	}
@@ -108,7 +108,7 @@ func toKnownEntry(g gist.Gist, alias string) known.Entry {
 		Filenames:   mapFileNames(g.Files),
 		Alias:       alias,
 		UpdatedAt:   g.UpdatedAt,
-		Owner:       gist.GuessOwner(g),
+		Owner:       g.Owner.Login,
 	}
 }
 

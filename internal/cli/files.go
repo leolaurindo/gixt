@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
 
@@ -15,7 +14,7 @@ import (
 
 // materializeFiles writes a gist's files into dir. When the work dir already
 // holds the same files (cached), they are reused and no downloads happen.
-func materializeFiles(ctx context.Context, client *gist.Client, g gist.Gist, dir string, forceUpdate bool) ([]string, bool, error) {
+func materializeFiles(ctx context.Context, client *gist.Client, g gist.Gist, dir string) ([]string, bool, error) {
 	type gistFile struct {
 		name string
 		info gist.File
@@ -40,12 +39,10 @@ func materializeFiles(ctx context.Context, client *gist.Client, g gist.Gist, dir
 	}
 
 	metaPath := cache.MetaPath(dir)
-	if !forceUpdate {
-		if cache.PathExists(metaPath) {
-			existing, err := cache.LoadMeta(metaPath)
-			if err == nil && cache.PresentFiles(dir, existing.Files) {
-				return existing.Files, true, nil
-			}
+	if _, err := os.Stat(metaPath); err == nil {
+		existing, err := cache.LoadMeta(metaPath)
+		if err == nil && cache.PresentFiles(dir, existing.Files) {
+			return existing.Files, true, nil
 		}
 	}
 
@@ -96,9 +93,6 @@ func fileModeFor(name string) os.FileMode {
 	case ".sh", ".bash", ".zsh", ".py", ".rb", ".pl", ".php", ".js", ".ts", ".go":
 		return 0o755
 	default:
-		if runtime.GOOS == "windows" {
-			return 0o644
-		}
 		return 0o644
 	}
 }
