@@ -40,3 +40,18 @@ func TestSaveAndReloadSettings(t *testing.T) {
 		t.Fatalf("expected Mine=false after round trip")
 	}
 }
+
+func TestLegacySettingsDefaultsMineToTrue(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "settings.json")
+	if err := os.WriteFile(path, []byte(`{"mode":"mine","cache_mode":"never"}`), 0o644); err != nil {
+		t.Fatalf("write legacy settings: %v", err)
+	}
+	s, err := config.LoadSettings(path)
+	if err != nil {
+		t.Fatalf("LoadSettings error: %v", err)
+	}
+	if !s.Mine {
+		t.Fatalf("expected Mine to default true when the key is absent")
+	}
+}

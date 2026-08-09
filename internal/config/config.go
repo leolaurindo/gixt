@@ -72,6 +72,13 @@ func LoadSettings(path string) (Settings, error) {
 	if err := json.Unmarshal(data, &s); err != nil {
 		return Settings{}, fmt.Errorf("parse settings: %w", err)
 	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return Settings{}, fmt.Errorf("parse settings: %w", err)
+	}
+	if _, ok := raw["mine"]; !ok {
+		s.Mine = true
+	}
 	return s, nil
 }
 
