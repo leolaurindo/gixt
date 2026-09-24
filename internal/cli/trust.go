@@ -85,6 +85,7 @@ func trustMine(cmd *cobra.Command, args []string) error {
 	if err := trust.Save(paths.TrustFile, store); err != nil {
 		return err
 	}
+	progress.Finish()
 	logf("approved %d gists at their current commits", len(snapshots))
 	return nil
 }
@@ -92,10 +93,11 @@ func trustMine(cmd *cobra.Command, args []string) error {
 const trustProgressBarWidth = 24
 
 type trustProgress struct {
-	out   io.Writer
-	tty   bool
-	total int
-	wrote bool
+	out      io.Writer
+	tty      bool
+	total    int
+	wrote    bool
+	finished bool
 }
 
 func newTrustProgress(total int, out io.Writer, tty bool) *trustProgress {
@@ -120,8 +122,9 @@ func (p *trustProgress) Update(done, total int) {
 }
 
 func (p *trustProgress) Finish() {
-	if p.tty && p.wrote {
+	if p.tty && p.wrote && !p.finished {
 		fmt.Fprintln(p.out)
+		p.finished = true
 	}
 }
 
