@@ -84,7 +84,7 @@ Use `gixt add <target> --as <name>` to remember an alias. Aliases are globally u
 
 Forget remembered entries with `gixt remove <target>`, or remove an owner's local entries with `gixt remove --owner <owner> --yes`.
 
-List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`.
+List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`. Add `--verbose` to show descriptions wrapped to the available table width.
 
 ## Caching, pins, and trust
 
