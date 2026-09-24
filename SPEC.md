@@ -622,7 +622,7 @@ Keep this ledger current in the same PR that changes a work-package status. It i
 | WP1 — Target and entry foundation | Done | Merged to `dev` in PR #12 (`99cdb74`) |
 | WP2 + WP3 — `cat` retrieval and root dispatch | Done | Merged to `dev` in PR #13 (`760129e`) |
 | WP4 + WP7 — Owner management and `add mine` | Done | Implemented in separate WP4 and WP7 commits on `feat/owner-management` |
-| WP5 — Trust snapshot progress and concurrency | Planned | Implement on `feat/trust-mine` |
+| WP5 — Trust snapshot progress and concurrency | Done | Implemented on `feat/trust-mine` for issue #4 |
 | WP6 — Release binary size | Planned | Implement on `feat/strip-release-binaries` |
 | WP8 — Human-readable list output | Planned | Implement on `feat/list-table` after WP4 + WP7 |
 
