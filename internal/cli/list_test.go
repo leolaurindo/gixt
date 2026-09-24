@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/leolaurindo/gixt/internal/known"
 )
@@ -26,7 +27,7 @@ func TestRenderListTable(t *testing.T) {
 	if err := renderList(&out, entries, false, false, 100); err != nil {
 		t.Fatal(err)
 	}
-	want := "┌───────────────┬───────┬──────────────────┐\n│ NAME          │ OWNER │ ID               │\n├───────────────┼───────┼──────────────────┤\n│ review-prompt │ @leo  │ 1234567890abcdef │\n│ tools.sh      │ @sam  │ abcdef0123456789 │\n└───────────────┴───────┴──────────────────┘\n"
+	want := "NAME           OWNER\nreview-prompt  @leo\ntools.sh       @sam\n"
 	if out.String() != want {
 		t.Fatalf("renderList() = %q, want %q", out.String(), want)
 	}
@@ -46,12 +47,12 @@ func TestRenderListColor(t *testing.T) {
 }
 
 func TestRenderListVerboseShowsDescription(t *testing.T) {
-	entries := []known.Entry{{ID: "12345678", Alias: "prompt", Description: "Review pull requests\ncarefully"}}
+	entries := []known.Entry{{ID: "12345678", Alias: "prompt", UpdatedAt: time.Date(2026, 9, 24, 0, 0, 0, 0, time.UTC), Description: "Review pull requests\ncarefully"}}
 	var out bytes.Buffer
 	if err := renderList(&out, entries, false, true, 100); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "DESCRIPTION") || !strings.Contains(out.String(), "Review pull requests carefully") {
+	if !strings.Contains(out.String(), "DESCRIPTION") || !strings.Contains(out.String(), "12345678") || !strings.Contains(out.String(), "2026-09-24") || !strings.Contains(out.String(), "Review pull requests carefully") {
 		t.Fatalf("verbose output missing description: %q", out.String())
 	}
 }
@@ -67,7 +68,7 @@ func TestRenderListWrapsVerboseDescription(t *testing.T) {
 	if err := renderList(&out, []known.Entry{entry}, false, true, 90); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "A deliberately long") || !strings.Contains(out.String(), "description that") {
+	if !strings.Contains(out.String(), "A deliberately") || !strings.Contains(out.String(), "long description") {
 		t.Fatalf("description was not wrapped at word boundaries: %q", out.String())
 	}
 	for _, line := range strings.Split(strings.TrimSuffix(out.String(), "\n"), "\n") {

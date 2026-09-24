@@ -101,9 +101,9 @@ func writeList(entries []known.Entry, verbose bool) error {
 }
 
 func renderList(w io.Writer, entries []known.Entry, color, verbose bool, tableWidth int) error {
-	headers := []string{"NAME", "OWNER", "ID"}
+	headers := []string{"NAME", "OWNER"}
 	if verbose {
-		headers = append(headers, "DESCRIPTION")
+		headers = append(headers, "ID", "UPDATED", "DESCRIPTION")
 	}
 	rows := make([][]string, len(entries))
 	widths := make([]int, len(headers))
@@ -123,7 +123,14 @@ func renderList(w io.Writer, entries []known.Entry, color, verbose bool, tableWi
 		if owner != "" {
 			owner = "@" + owner
 		}
-		rows[i] = []string{name, owner, e.ID}
+		rows[i] = []string{name, owner}
+		if verbose {
+			updated := "-"
+			if !e.UpdatedAt.IsZero() {
+				updated = e.UpdatedAt.Format("2006-01-02")
+			}
+			rows[i] = append(rows[i], e.ID, updated)
+		}
 		for col, value := range rows[i] {
 			if width := utf8.RuneCountInString(value); width > widths[col] {
 				widths[col] = width
@@ -131,50 +138,40 @@ func renderList(w io.Writer, entries []known.Entry, color, verbose bool, tableWi
 		}
 	}
 	if verbose {
-		descriptionWidth := tableWidth - widths[0] - widths[1] - widths[2] - 13
-		if descriptionWidth < widths[3] {
-			descriptionWidth = widths[3]
+		baseWidth := 0
+		for _, width := range widths[:len(widths)-1] {
+			baseWidth += width
+		}
+		descriptionWidth := tableWidth - baseWidth - 2*(len(widths)-1)
+		if descriptionWidth < widths[len(widths)-1] {
+			descriptionWidth = widths[len(widths)-1]
 		}
 		for i, e := range entries {
 			description := strings.Join(strings.Fields(e.Description), " ")
 			descriptions[i] = wrapDescription(description, descriptionWidth)
 			for _, line := range descriptions[i] {
-				if width := utf8.RuneCountInString(line); width > widths[3] {
-					widths[3] = width
+				if width := utf8.RuneCountInString(line); width > widths[len(widths)-1] {
+					widths[len(widths)-1] = width
 				}
 			}
 		}
 	}
 
-	drawBorder := func(left, join, right string) error {
-		if _, err := fmt.Fprint(w, left); err != nil {
-			return err
-		}
-		for i, width := range widths {
+	drawRow := func(values []string, colorName bool) error {
+		for i, value := range values {
 			if i > 0 {
-				if _, err := fmt.Fprint(w, join); err != nil {
+				if _, err := fmt.Fprint(w, "  "); err != nil {
 					return err
 				}
-			}
-			if _, err := fmt.Fprint(w, strings.Repeat("─", width+2)); err != nil {
-				return err
-			}
-		}
-		_, err := fmt.Fprintln(w, right)
-		return err
-	}
-	drawRow := func(values []string, colorName bool) error {
-		if _, err := fmt.Fprint(w, "│"); err != nil {
-			return err
-		}
-		for i, value := range values {
-			if _, err := fmt.Fprint(w, " "); err != nil {
-				return err
 			}
 			if color && colorName && i == 0 {
 				value = "\033[36m" + value + "\033[0m"
 			}
-			if _, err := fmt.Fprint(w, value, strings.Repeat(" ", widths[i]-utf8.RuneCountInString(values[i])), " │"); err != nil {
+			padding := 0
+			if i < len(values)-1 {
+				padding = widths[i] - utf8.RuneCountInString(values[i])
+			}
+			if _, err := fmt.Fprint(w, value, strings.Repeat(" ", padding)); err != nil {
 				return err
 			}
 		}
@@ -182,13 +179,7 @@ func renderList(w io.Writer, entries []known.Entry, color, verbose bool, tableWi
 		return err
 	}
 
-	if err := drawBorder("┌", "┬", "┐"); err != nil {
-		return err
-	}
 	if err := drawRow(headers, false); err != nil {
-		return err
-	}
-	if err := drawBorder("├", "┼", "┤"); err != nil {
 		return err
 	}
 	for i, row := range rows {
@@ -199,16 +190,17 @@ func renderList(w io.Writer, entries []known.Entry, color, verbose bool, tableWi
 			continue
 		}
 		for lineIndex, description := range descriptions[i] {
-			values := []string{"", "", "", description}
+			values := make([]string, len(headers))
 			if lineIndex == 0 {
-				values[0], values[1], values[2] = row[0], row[1], row[2]
+				copy(values, row)
 			}
+			values[len(values)-1] = description
 			if err := drawRow(values, lineIndex == 0); err != nil {
 				return err
 			}
 		}
 	}
-	return drawBorder("└", "┴", "┘")
+	return nil
 }
 
 func wrapDescription(text string, width int) []string {
