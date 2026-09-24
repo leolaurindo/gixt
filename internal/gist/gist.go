@@ -192,7 +192,7 @@ func (c *Client) Download(ctx context.Context, rawURL string) ([]byte, error) {
 
 func (c *Client) CurrentUser(ctx context.Context) (string, error) {
 	if c.token == "" {
-		return "", errors.New("not authenticated")
+		return "", errors.New("this action requires authentication; run `gixt auth login`")
 	}
 	body, _, _, err := c.get(ctx, "/user", "")
 	if err != nil {
@@ -208,17 +208,23 @@ func (c *Client) CurrentUser(ctx context.Context) (string, error) {
 }
 
 func (c *Client) ListForOwner(ctx context.Context, owner string, perPage, maxPages int) ([]ListItem, error) {
-	return c.list(ctx, fmt.Sprintf("/users/%s/gists", owner), perPage, maxPages)
+	return c.list(ctx, fmt.Sprintf("/users/%s/gists", owner), perPage, maxPages, nil)
+}
+
+// ListForOwnerWithProgress lists an owner's gists and reports each completed
+// page with its cumulative result count.
+func (c *Client) ListForOwnerWithProgress(ctx context.Context, owner string, perPage, maxPages int, progress func(page, total int)) ([]ListItem, error) {
+	return c.list(ctx, fmt.Sprintf("/users/%s/gists", owner), perPage, maxPages, progress)
 }
 
 func (c *Client) ListMine(ctx context.Context, perPage int) ([]ListItem, error) {
 	if c.token == "" {
 		return nil, errors.New("this action requires authentication; run `gixt auth login`")
 	}
-	return c.list(ctx, "/gists", perPage, 0)
+	return c.list(ctx, "/gists", perPage, 0, nil)
 }
 
-func (c *Client) list(ctx context.Context, base string, perPage, maxPages int) ([]ListItem, error) {
+func (c *Client) list(ctx context.Context, base string, perPage, maxPages int, progress func(page, total int)) ([]ListItem, error) {
 	if perPage <= 0 {
 		perPage = 50
 	}
@@ -233,6 +239,9 @@ func (c *Client) list(ctx context.Context, base string, perPage, maxPages int) (
 			return nil, fmt.Errorf("parse gist list: %w", err)
 		}
 		all = append(all, batch...)
+		if progress != nil {
+			progress(page, len(all))
+		}
 		if len(batch) < perPage {
 			break
 		}
