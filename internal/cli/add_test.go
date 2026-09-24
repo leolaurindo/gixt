@@ -6,6 +6,18 @@ import (
 	"github.com/leolaurindo/gixt/internal/known"
 )
 
+func TestEnsureAliasAvailable(t *testing.T) {
+	paths := writeKnown(t, known.Store{Entries: []known.Entry{
+		{ID: "existing", Alias: "review"},
+	}})
+	if err := ensureAliasAvailable(paths, "other", "review"); err == nil {
+		t.Fatal("expected duplicate alias error")
+	}
+	if err := ensureAliasAvailable(paths, "existing", "review"); err != nil {
+		t.Fatalf("expected same gist alias update to be allowed: %v", err)
+	}
+}
+
 func TestReplaceOwnerPreservesPins(t *testing.T) {
 	entries := []known.Entry{
 		{ID: "kept", Owner: "me", Pin: "aaa"},

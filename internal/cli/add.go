@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -41,12 +42,16 @@ func addGist(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	alias := mustString(cmd, "as")
+	if err := ensureAliasAvailable(paths, id, alias); err != nil {
+		return err
+	}
 	g, err := client.Fetch(cmd.Context(), id, "")
 	if err != nil {
 		return err
 	}
 	return saveKnown(paths, func(s *known.Store) {
-		known.Upsert(s, toKnownEntry(g, mustString(cmd, "as")))
+		known.Upsert(s, toKnownEntry(g, alias))
 	})
 }
 
@@ -67,6 +72,23 @@ func addOwner(cmd *cobra.Command, args []string) error {
 	return saveKnown(paths, func(s *known.Store) {
 		s.Entries = replaceOwner(s.Entries, args[0], entries)
 	})
+}
+
+// saveKnown loads the store, applies mutate, and saves it.
+func ensureAliasAvailable(paths config.Paths, id, alias string) error {
+	if strings.TrimSpace(alias) == "" {
+		return nil
+	}
+	st, err := known.Load(paths.KnownFile)
+	if err != nil {
+		return err
+	}
+	for _, entry := range st.Entries {
+		if entry.ID != id && strings.EqualFold(entry.Alias, alias) {
+			return fmt.Errorf("alias %q is already used by gist %s", alias, entry.ID)
+		}
+	}
+	return nil
 }
 
 // saveKnown loads the store, applies mutate, and saves it.

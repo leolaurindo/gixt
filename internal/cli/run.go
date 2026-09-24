@@ -27,6 +27,7 @@ type runOptions struct {
 	python  string
 	isolate bool
 	ref     string
+	entry   string
 	view    bool
 	dryRun  bool
 	add     bool
@@ -41,6 +42,7 @@ func addRunFlags(fs *pflag.FlagSet) {
 	fs.String("python", "", "interpreter to use instead of the shebang (e.g. .venv/bin/python)")
 	fs.Bool("isolate", false, "run in the gist work dir instead of the current directory")
 	fs.String("ref", "", "run a specific gist revision")
+	fs.StringP("entry", "e", "", "run this exact gist file")
 	fs.Bool("view", false, "print the gist files and exit without running")
 	fs.Bool("dry-run", false, "resolve and print the command without running it")
 	fs.Bool("add", false, "remember the gist after a successful run")
@@ -67,6 +69,7 @@ func runFlagsOf(cmd *cobra.Command) *runOptions {
 		python:  mustString(cmd, "python"),
 		isolate: mustBool(cmd, "isolate"),
 		ref:     mustString(cmd, "ref"),
+		entry:   mustString(cmd, "entry"),
 		view:    mustBool(cmd, "view"),
 		dryRun:  mustBool(cmd, "dry-run"),
 		add:     mustBool(cmd, "add"),
@@ -91,10 +94,11 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return err
 	}
 
-	id, err := resolveTarget(ctx, target, paths, !o.offline)
+	resolved, err := ResolveTarget(ctx, target, paths, !o.offline)
 	if err != nil {
 		return err
 	}
+	id := resolved.GistID
 
 	pin, err := pinnedRef(paths, id)
 	if err != nil {
@@ -118,7 +122,15 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 		return viewFiles(meta, workDir)
 	}
 
-	cmd, reason, err := runner.BuildCommand(workDir, meta.Files, forwarded, o.python)
+	requested := o.entry
+	if requested == "" {
+		requested = resolved.RequestedFile
+	}
+	entry, err := SelectEntry(meta.Files, requested)
+	if err != nil {
+		return err
+	}
+	cmd, reason, err := runner.BuildCommand(workDir, entry, forwarded, o.python)
 	if err != nil {
 		return err
 	}
@@ -173,6 +185,9 @@ func runWithOptions(ctx context.Context, o *runOptions, target string, forwarded
 
 // rememberGist records a gist in the known list after a successful run.
 func rememberGist(paths config.Paths, id string, m cache.Meta, alias string) error {
+	if err := ensureAliasAvailable(paths, id, alias); err != nil {
+		return err
+	}
 	return saveKnown(paths, func(s *known.Store) {
 		known.Upsert(s, known.Entry{
 			ID:          id,
