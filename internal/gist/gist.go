@@ -192,7 +192,7 @@ func (c *Client) Download(ctx context.Context, rawURL string) ([]byte, error) {
 
 func (c *Client) CurrentUser(ctx context.Context) (string, error) {
 	if c.token == "" {
-		return "", errors.New("not authenticated")
+		return "", errors.New("this action requires authentication; run `gixt auth login`")
 	}
 	body, _, _, err := c.get(ctx, "/user", "")
 	if err != nil {

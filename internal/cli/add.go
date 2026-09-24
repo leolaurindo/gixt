@@ -28,7 +28,14 @@ func newAddCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE:  addOwner,
 	}
-	add.AddCommand(owner)
+	mine := &cobra.Command{
+		Use:   "mine",
+		Short: "remember all of the authenticated user's gists",
+		Args:  cobra.NoArgs,
+		RunE:  addMine,
+	}
+	mine.Flags().String("as", "", "not supported for add mine")
+	add.AddCommand(owner, mine)
 	return add
 }
 
@@ -61,6 +68,22 @@ func addOwner(cmd *cobra.Command, args []string) error {
 		return err
 	}
 	return registerOwner(cmd, paths, args[0])
+}
+
+func addMine(cmd *cobra.Command, args []string) error {
+	if cmd.Flags().Changed("as") {
+		return fmt.Errorf("--as is not supported with `add mine`")
+	}
+	paths, err := ensurePaths()
+	if err != nil {
+		return err
+	}
+	client := gist.New(loadToken(paths.AuthFile))
+	owner, err := client.CurrentUser(cmd.Context())
+	if err != nil {
+		return err
+	}
+	return registerOwner(cmd, paths, owner)
 }
 
 func registerOwner(cmd *cobra.Command, paths config.Paths, owner string) error {

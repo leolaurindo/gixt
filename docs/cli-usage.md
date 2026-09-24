@@ -82,6 +82,10 @@ gixt run --entry review.sh review-prompt
 
 Use `gixt add <target> --as <name>` to remember an alias. Aliases are globally unique; use `--entry` to select files within the aliased Gist.
 
+Forget remembered entries with `gixt remove <target>`, or remove an owner's local entries with `gixt remove --owner <owner> --yes`.
+
+List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`.
+
 ## Caching, pins, and trust
 
 - Online retrieval uses the existing ETag/cache behavior.
@@ -101,4 +105,5 @@ Remember Gists with:
 ```sh
 gixt add <target> --as <name>
 gixt add owner <owner>
+gixt add mine
 ```

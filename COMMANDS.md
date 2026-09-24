@@ -65,17 +65,17 @@ Execution resolution order is Python override, shebang, then extension mapping. 
 
 - `gixt add <id|url|owner/name> [--as <name>]` — remember one Gist.
 - `gixt add owner <login>` — remember all of an owner's Gists.
+- `gixt add mine` — remember all Gists owned by the authenticated user.
 
 ## `gixt remove`
 
 - `gixt remove <target>` — forget one known Gist.
-- `gixt remove owner <login>` — forget all known Gists for an owner.
+- `gixt remove --owner <login> [--yes]` — forget all known Gists for an owner after confirmation.
 
 ## `gixt list`
 
 - `gixt list` — show locally remembered Gists.
-- `gixt list refresh` — refresh remembered metadata.
-- `gixt list clear` — remove all remembered entries.
+- `gixt list <owner> [--limit <n>|--all]` — list an owner's remote Gists without remembering them.
 
 ## Advanced commands
 

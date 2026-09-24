@@ -77,9 +77,11 @@ gixt run https://gist.github.com/you/1234567890abcdef
 gixt run 1234567890abcdef --add            # remembered as its file basename
 gixt add hex23-git/ssh-helper.sh --as ssh  # remember with a custom name
 gixt add owner <username>                  # remember all of a user's gists
+gixt add mine                              # remember all of your gists
 
-# see your known gists
+# see known or remote gists
 gixt list
+gixt list <username> --limit 30
 
 # retrieve by friendly name
 gixt cat ssh

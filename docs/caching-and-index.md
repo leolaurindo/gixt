@@ -34,14 +34,14 @@ Commands:
 - `gixt add <id|url|owner/gist> [--as <name>]` — remember a single gist (custom name with `--as`).
 - `gixt add owner <login>` — refresh an owner's gists while preserving pins.
 - `gixt remove <target>` — forget a gist.
-- `gixt remove owner <login>` — forget all of an owner's gists.
-- `gixt list` — pretty table of known gists.
-- `gixt list refresh` — re-fetch metadata, dropping deleted unpinned gists and retaining pinned entries.
-- `gixt list clear` — forget everything, including pins stored on those entries.
+- `gixt add mine` — remember all Gists owned by the authenticated user.
+- `gixt remove --owner <login> --yes` — forget all of an owner's local entries.
+- `gixt list` — list remembered Gists.
+- `gixt list <owner> --limit 30` — list an owner's remote Gists without remembering them.
 - `gixt pin <target> [<sha>]` — validate and pin a gist revision; `gixt run` uses it by default.
 - `gixt pin list` / `gixt pin remove <target>` / `gixt pin clear` — manage pins.
 
-Metadata updates never move a pin. Re-running `gixt pin`, or using `pin remove`/`pin clear`, changes it explicitly. Forgetting a known entry with `remove`, `remove owner`, or `list clear` also deletes its pin.
+Metadata updates never move a pin. Re-running `gixt pin`, or using `pin remove`/`pin clear`, changes it explicitly. Forgetting a known entry with `remove` or `remove --owner` also deletes its pin.
 
 Running a gist does **not** auto-add it to `known.json`; use `gixt run <target> --add` (or `--as <name>`) to remember it, or `gixt add` explicitly.
 
