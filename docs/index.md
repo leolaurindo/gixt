@@ -1,23 +1,21 @@
 # gixt
 
-Your personal, versioned cloud clipboard.
+Keep versioned scripts, prompts, snippets, and templates in GitHub Gists,
+give them names, and use them from anywhere.
 
-Keep tiny scripts, prompts, snippets, and templates in GitHub Gists, give them
-names, versioning, and use them from anywhere.
-
-Run executable artifacts as commands:
-
-```sh
-gixt add leolaurindo/hello-world --as hello
-gixt hello
-```
-
-Print non-executable artifacts when you need their contents and plug into your workflow:
+Retrieve prompt and text artifacts safely:
 
 ```sh
 gixt add leolaurindo/review-prompt.md --as review_prompt
-gixt review_prompt --view >> AGENTS.md
-gixt leolaurindo/some_skill.md >> .agents/skills/some_skill/SKILL.md
+gixt cat review_prompt >> AGENTS.md
+gixt cat leolaurindo/some_skill.md >> .agents/skills/some_skill/SKILL.md
+```
+
+Run executable artifacts explicitly:
+
+```sh
+gixt add leolaurindo/hello-world --as hello
+gixt run hello
 ```
 
 ## Install
