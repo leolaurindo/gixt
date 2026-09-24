@@ -9,11 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `gixt cat` and its `print` alias for byte-exact Gist retrieval, including independently resolved targets and explicit entry selection.
+- Remote owner listing with `gixt list <owner>`, bounded pagination, and read-only results.
+- `gixt add mine` for registering all Gists owned by the authenticated user.
+- Owner-wide local removal with `gixt remove --owner <owner> [--yes]`.
 - Checksum-verified shell and PowerShell installers, with SHA-256 manifests attached to future releases.
 
 ### Changed
 - Bare targets now retrieve content through `cat`; code execution requires explicit `gixt run`.
 - `run --view` is deprecated in favor of `cat`.
+- `gixt add owner` now reports page progress on stderr and updates the local store atomically while preserving aliases and pins.
+- `gixt trust mine` reports snapshot progress, uses bounded revision fetching, and respects GitHub rate-limit delays.
+- Release binaries are built with stripped debug metadata and trimmed paths while retaining version injection.
 
 ## [0.3.0] - 2026-08-09
 
