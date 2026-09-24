@@ -341,7 +341,7 @@ Do not save a partial owner refresh: collect all pages successfully, then replac
 - Do not assign aliases automatically; each remembered Gist remains addressable by ID, filename, or a later explicit `--as` registration.
 - Reject positional arguments and `--as` for this form.
 
-This is a separate work package because it adds a convenience entry point without changing the semantics of owner registration.
+This is part of the owner-management work package because it adds a convenience entry point while reusing the existing owner-registration semantics.
 
 ### 14.4 Human-readable list output
 
@@ -613,7 +613,20 @@ Test:
 
 ## 21. Ordered Implementation Plan
 
-### 21.1 Branch and PR Work Packages
+### 21.1 Work-package progress
+
+Keep this ledger current in the same PR that changes a work-package status. It is the quick status view; the commit or PR reference provides traceability without requiring checkout inspection.
+
+| Work package | Status | Evidence or next step |
+|---|---|---|
+| WP1 — Target and entry foundation | Done | Merged to `dev` in PR #12 (`99cdb74`) |
+| WP2 + WP3 — `cat` retrieval and root dispatch | Done | Merged to `dev` in PR #13 (`760129e`) |
+| WP4 + WP7 — Owner management and `add mine` | In progress | WP4 implemented on `feat/owner-management`; WP7 pending |
+| WP5 — Trust snapshot progress and concurrency | Planned | Implement on `feat/trust-mine` |
+| WP6 — Release binary size | Planned | Implement on `feat/strip-release-binaries` |
+| WP8 — Human-readable list output | Planned | Implement on `feat/list-table` after WP4 + WP7 |
+
+### 21.2 Branch and PR Work Packages
 
 Keep this file as the single source of truth. Assign agents a work-package ID and its in-scope sections; do not copy the specification into branch-specific documents. Each feature branch should start from the latest `development` and open a PR back to `development`, following the promotion flow in section 22.
 
@@ -621,15 +634,14 @@ Keep this file as the single source of truth. Assign agents a work-package ID an
 |---|---|---|---|
 | WP1 — Target and entry foundation (#7) | `feat/target-entry` | Shared target resolution and typed errors (§7–9), run entry selection (§12), tests (§20.1–20.2) | None; do first |
 | WP2 + WP3 — `cat` retrieval and root dispatch (#6, #5) | `feat/cat-dispatch` | Shared artifact pipeline and `cat` behavior, independently resolved targets, single-target `--entry`, byte-exact multi-target output, bare-target dispatch, command-like target handling, and typo suggestions (§6.2, §10–13), tests (§20.3, §20.5) | WP1 |
-| WP4 — Owner discovery and removal (#8) | `feat/owner-management` | Remote `list <owner>`, pagination, confirmed `remove --owner`, `add owner` page progress (§14), tests (§20.6) | WP1 recommended for the final normal-resolution contract used by `remove <target>` |
+| WP4 + WP7 — Owner management and `add mine` (#8) | `feat/owner-management` | Remote `list <owner>`, pagination, confirmed `remove --owner`, `add owner` page progress, and authenticated-user registration shorthand (§6.1, §14, §14.3), tests (§20.6) | WP1 recommended for the final normal-resolution contract used by `remove <target>` |
 | WP5 — Trust snapshot progress and concurrency (#4) | `feat/trust-mine` | Progress, bounded revision-fetch workers, rate-limit handling, atomic persistence (§15), tests (§20.7) | None |
 | WP6 — Release binary size (#9) | `feat/strip-release-binaries` | Release build flags and version/size validation (§16, §20.7) | None |
-| WP7 — `add mine` shorthand | `feat/add-mine` | Add the authenticated-user registration shorthand, reusing owner pagination, progress, pin preservation, and atomic persistence (§6.1, §14.3), tests (§20.6) | WP4 recommended; keep separate from owner-management implementation |
-| WP8 — Human-readable list output | `feat/list-table` | Compact deterministic table presentation for local and remote listings without changing listing semantics (§14.4), tests (§20.8) | WP4; presentation-only branch |
+| WP8 — Human-readable list output | `feat/list-table` | Compact deterministic table presentation for local and remote listings without changing listing semantics (§14.4), tests (§20.8) | WP4 + WP7; presentation-only branch |
 
-Recommended merge order is WP1 → combined WP2 + WP3. WP4 can follow WP1 and proceed in parallel with the combined cat/dispatch branch. WP7 and WP8 follow WP4 and remain separate responsibilities: WP7 owns the authenticated-user registration shorthand, while WP8 owns list presentation only. WP5 and WP6 can proceed independently. Each branch should start from the latest `development` and open one PR back to `development`. There is no separate WP3 branch: root dispatch is implemented in the same `feat/cat-dispatch` branch as `cat`. Agents should avoid shared-file conflicts and rebase on the latest `development` before opening or updating their PRs. Each PR should implement only its assigned behavior plus directly required tests/docs; leave unrelated work for its own package.
+Recommended merge order is WP1 → combined WP2 + WP3. WP4 + WP7 can follow WP1 and proceed in parallel with the combined cat/dispatch branch. WP8 follows WP4 + WP7 and remains presentation-only. WP5 and WP6 can proceed independently. Each branch should start from the latest `development` and open one PR back to `development`. There is no separate WP3 branch: root dispatch is implemented in the same `feat/cat-dispatch` branch as `cat`. Agents should avoid shared-file conflicts and rebase on the latest `development` before opening or updating their PRs. Each PR should implement only its assigned behavior plus directly required tests/docs; leave unrelated work for its own package.
 
-For agent handoff, use a prompt like: “Implement WP7 from `SPEC.md` §14.3 and §20.6. Follow the dependency and scope in §21.1; do not implement other work packages. Run the required checks listed in §20.”
+For agent handoff, use a prompt like: “Implement WP4 + WP7 from `SPEC.md` §14 and §14.3 and §20.6. Follow the dependency and scope in §21.2; do not implement other work packages. Run the required checks listed in §20.”
 
 #### Keep network helpers use-case-specific
 
@@ -639,10 +651,10 @@ For agent handoff, use a prompt like: “Implement WP7 from `SPEC.md` §14.3 and
 
 Section 22 is repository workflow guidance, not another issue work package. If its workflow-file changes are needed, make them a separate infrastructure PR; GitHub rulesets/branch-protection settings require repository-admin configuration outside the code PR.
 
-### 21.2 Execution order
+### 21.3 Execution order
 
 - Implement WP1 first, then implement the combined WP2 + WP3 branch in dependency order. Include the bare-command breaking change and migration notes in that combined branch.
-- WP4 follows WP1. WP7 and WP8 follow WP4. WP5 and WP6 are independent and may run in parallel.
+- WP4 + WP7 follows WP1. WP8 follows WP4 + WP7. WP5 and WP6 are independent and may run in parallel.
 - Each work-package branch must pass its listed tests. Before promotion, run the full checks in §20.
 
 ## 22. Git and CI Workflow

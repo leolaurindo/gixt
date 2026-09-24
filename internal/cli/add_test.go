@@ -18,9 +18,9 @@ func TestEnsureAliasAvailable(t *testing.T) {
 	}
 }
 
-func TestReplaceOwnerPreservesPins(t *testing.T) {
+func TestReplaceOwnerPreservesPinsAndAliases(t *testing.T) {
 	entries := []known.Entry{
-		{ID: "kept", Owner: "me", Pin: "aaa"},
+		{ID: "kept", Owner: "me", Pin: "aaa", Alias: "review"},
 		{ID: "missing", Owner: "me", Pin: "bbb"},
 		{ID: "stale", Owner: "me"},
 		{ID: "other", Owner: "you"},
@@ -28,7 +28,7 @@ func TestReplaceOwnerPreservesPins(t *testing.T) {
 	fresh := []known.Entry{{ID: "kept", Owner: "me"}, {ID: "new", Owner: "me"}}
 
 	got := replaceOwner(entries, "me", fresh)
-	if len(got) != 4 || got[0].ID != "missing" || got[1].ID != "other" || got[2].Pin != "aaa" || got[3].ID != "new" {
+	if len(got) != 4 || got[0].ID != "missing" || got[1].ID != "other" || got[2].Pin != "aaa" || got[2].Alias != "review" || got[3].ID != "new" {
 		t.Fatalf("unexpected entries: %+v", got)
 	}
 }

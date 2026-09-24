@@ -60,8 +60,14 @@ func addOwner(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	return registerOwner(cmd, paths, args[0])
+}
+
+func registerOwner(cmd *cobra.Command, paths config.Paths, owner string) error {
 	client := gist.New(loadToken(paths.AuthFile))
-	items, err := client.ListForOwner(cmd.Context(), args[0], 100, 5)
+	items, err := client.ListForOwnerWithProgress(cmd.Context(), owner, 100, 0, func(page, total int) {
+		logf("Loading Gists: page %d (%d found)", page, total)
+	})
 	if err != nil {
 		return err
 	}
@@ -70,7 +76,7 @@ func addOwner(cmd *cobra.Command, args []string) error {
 		entries = append(entries, toKnownEntryFromList(it))
 	}
 	return saveKnown(paths, func(s *known.Store) {
-		s.Entries = replaceOwner(s.Entries, args[0], entries)
+		s.Entries = replaceOwner(s.Entries, owner, entries)
 	})
 }
 
@@ -104,14 +110,21 @@ func saveKnown(paths config.Paths, mutate func(*known.Store)) error {
 
 func replaceOwner(entries []known.Entry, owner string, fresh []known.Entry) []known.Entry {
 	pins := make(map[string]string)
+	aliases := make(map[string]string)
 	freshIDs := make(map[string]bool, len(fresh))
 	for _, e := range entries {
-		if strings.EqualFold(e.Owner, owner) && e.Pin != "" {
-			pins[e.ID] = e.Pin
+		if strings.EqualFold(e.Owner, owner) {
+			if e.Pin != "" {
+				pins[e.ID] = e.Pin
+			}
+			if e.Alias != "" {
+				aliases[e.ID] = e.Alias
+			}
 		}
 	}
 	for i := range fresh {
 		fresh[i].Pin = pins[fresh[i].ID]
+		fresh[i].Alias = aliases[fresh[i].ID]
 		freshIDs[fresh[i].ID] = true
 	}
 	var kept []known.Entry

@@ -95,6 +95,35 @@ func TestAuthHeaderSent(t *testing.T) {
 	}
 }
 
+func TestListForOwnerWithProgress(t *testing.T) {
+	var pages []int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/users/me/gists" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		page := 1
+		if r.URL.Query().Get("page") == "2" {
+			page = 2
+		}
+		if page == 1 {
+			w.Write([]byte(`[{"id":"one"},{"id":"two"}]`))
+			return
+		}
+		w.Write([]byte(`[{"id":"three"}]`))
+	}))
+	defer srv.Close()
+
+	items, err := newWithBase(srv.URL, "").ListForOwnerWithProgress(context.Background(), "me", 2, 0, func(page, total int) {
+		pages = append(pages, page, total)
+	})
+	if err != nil {
+		t.Fatalf("ListForOwnerWithProgress error: %v", err)
+	}
+	if len(items) != 3 || len(pages) != 4 || pages[0] != 1 || pages[1] != 2 || pages[2] != 2 || pages[3] != 3 {
+		t.Fatalf("unexpected items or progress: %d, %v", len(items), pages)
+	}
+}
+
 func TestListMineRequiresAuthAndPaginates(t *testing.T) {
 	requests := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
