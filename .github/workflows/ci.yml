@@ -1,21 +1,8 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - "**/*.go"
-      - ".github/workflows/*.yml"
-      - "docs/gixt.*"
-      - go.mod
-      - go.sum
   pull_request:
-    paths:
-      - "**/*.go"
-      - ".github/workflows/*.yml"
-      - "docs/gixt.*"
-      - go.mod
-      - go.sum
+    branches: [dev, main]
   workflow_dispatch:
 
 jobs:

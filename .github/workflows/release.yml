@@ -85,17 +85,6 @@ jobs:
           merge-multiple: true
           path: dist
 
-      - name: Prepare release notes
-        shell: bash
-        run: |
-          VERSION=${GITHUB_REF_NAME#v}
-          awk -v version="$VERSION" '
-            index($0, "## [" version "]") == 1 { release = 1; next }
-            release && /^## \[/ { exit }
-            release { print }
-          ' CHANGELOG.md > RELEASE_NOTES.md
-          test -s RELEASE_NOTES.md
-
       - name: Generate checksums
         working-directory: dist
         run: sha256sum gixt_* > checksums.txt
@@ -103,7 +92,7 @@ jobs:
       - name: Publish release assets
         uses: softprops/action-gh-release@v2.0.1
         with:
-          body_path: RELEASE_NOTES.md
+          generate_release_notes: true
           files: |
             dist/gixt_*.*
             dist/checksums.txt
