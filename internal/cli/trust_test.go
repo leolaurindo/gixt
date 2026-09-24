@@ -1,9 +1,11 @@
 package cli
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,6 +13,27 @@ import (
 
 	"github.com/leolaurindo/gixt/internal/gist"
 )
+
+func TestTrustProgressUsesStableLinesWithoutTTY(t *testing.T) {
+	var out bytes.Buffer
+	progress := newTrustProgress(2, &out, false)
+	progress.Update(1, 2)
+	progress.Update(2, 2)
+	progress.Finish()
+	if got, want := out.String(), "Snapshotting gists: 1/2\nSnapshotting gists: 2/2\n"; got != want {
+		t.Fatalf("unexpected non-TTY progress: %q", got)
+	}
+}
+
+func TestTrustProgressRedrawsOneBarOnTTY(t *testing.T) {
+	var out bytes.Buffer
+	progress := newTrustProgress(4, &out, true)
+	progress.Update(2, 4)
+	progress.Finish()
+	if !strings.Contains(out.String(), "\rSnapshotting gists: [============............] 2/4\n") {
+		t.Fatalf("unexpected TTY progress: %q", out.String())
+	}
+}
 
 func TestSnapshotTrustLimitsWorkersAndReportsProgress(t *testing.T) {
 	items := make([]gist.ListItem, 10)

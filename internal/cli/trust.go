@@ -4,7 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"os"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -67,11 +70,12 @@ func trustMine(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
+	items = uniqueListItems(items)
+	progress := newTrustProgress(len(items), os.Stderr, isTTY(os.Stderr))
+	defer progress.Finish()
 	snapshots, err := snapshotTrust(cmd.Context(), items, func(ctx context.Context, id string) (gist.Gist, error) {
 		return fetchTrustGist(ctx, client, id)
-	}, func(done, total int) {
-		logf("Snapshotting gists: %d/%d", done, total)
-	})
+	}, progress.Update)
 	if err != nil {
 		return err
 	}
@@ -83,6 +87,42 @@ func trustMine(cmd *cobra.Command, args []string) error {
 	}
 	logf("approved %d gists at their current commits", len(snapshots))
 	return nil
+}
+
+const trustProgressBarWidth = 24
+
+type trustProgress struct {
+	out   io.Writer
+	tty   bool
+	total int
+	wrote bool
+}
+
+func newTrustProgress(total int, out io.Writer, tty bool) *trustProgress {
+	return &trustProgress{out: out, tty: tty, total: total}
+}
+
+func (p *trustProgress) Update(done, total int) {
+	if p.total == 0 {
+		return
+	}
+	if !p.tty {
+		fmt.Fprintf(p.out, "Snapshotting gists: %d/%d\n", done, total)
+		return
+	}
+	filled := done * trustProgressBarWidth / total
+	if filled > trustProgressBarWidth {
+		filled = trustProgressBarWidth
+	}
+	bar := strings.Repeat("=", filled) + strings.Repeat(".", trustProgressBarWidth-filled)
+	fmt.Fprintf(p.out, "\rSnapshotting gists: [%s] %d/%d", bar, done, total)
+	p.wrote = true
+}
+
+func (p *trustProgress) Finish() {
+	if p.tty && p.wrote {
+		fmt.Fprintln(p.out)
+	}
 }
 
 type trustSnapshot struct {
