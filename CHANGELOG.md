@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Checksum-verified shell and PowerShell installers, with SHA-256 manifests attached to future releases.
 
 ### Changed
+- `gixt list` defaults to name and owner; `--verbose` adds full IDs, update dates, and wrapped descriptions.
 - Bare targets now retrieve content through `cat`; code execution requires explicit `gixt run`.
 - `run --view` is deprecated in favor of `cat`.
 - `gixt add owner` now reports page progress on stderr and updates the local store atomically while preserving aliases and pins.
