@@ -2,11 +2,13 @@ package gist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func gistJSON(id, rawURL string) string {
@@ -172,6 +174,25 @@ func TestDownload(t *testing.T) {
 	}
 	if string(data) != "script-body" {
 		t.Fatalf("unexpected body: %s", data)
+	}
+}
+
+func TestRateLimitErrorIncludesRetryHints(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "3")
+		w.Header().Set("X-RateLimit-Reset", "2000000000")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"message":"secondary rate limit"}`))
+	}))
+	defer srv.Close()
+
+	_, err := newWithBase(srv.URL, "").Fetch(context.Background(), "rate-limited", "")
+	var rateLimit *RateLimitError
+	if !errors.As(err, &rateLimit) {
+		t.Fatalf("expected rate-limit error, got %T: %v", err, err)
+	}
+	if !rateLimit.HasRetryAfter || rateLimit.RetryAfter != 3*time.Second || rateLimit.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("unexpected rate-limit details: %+v", rateLimit)
 	}
 }
 

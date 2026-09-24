@@ -20,7 +20,7 @@ gixt auth login      # required once
 gixt trust mine      # fetch and approve every exact current commit
 ```
 
-The snapshot includes public and secret gists, and the trust store is saved only after every revision is fetched. A gist changed after the snapshot has a different commit and prompts again. Taking another snapshot replaces the previously approved commit for each gist.
+The snapshot includes public and secret gists, and the trust store is saved only after every revision is fetched. Progress is reported on stderr as revisions complete. Revision requests use at most three workers and honor GitHub rate-limit delays; a failed snapshot leaves the existing trust store unchanged. A gist changed after the snapshot has a different commit and prompts again. Taking another snapshot replaces the previously approved commit for each gist.
 
 Managing approvals:
 
