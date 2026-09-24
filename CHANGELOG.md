@@ -8,7 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `gixt cat` and its `print` alias for byte-exact Gist retrieval, including independently resolved targets and explicit entry selection.
 - Checksum-verified shell and PowerShell installers, with SHA-256 manifests attached to future releases.
+
+### Changed
+- Bare targets now retrieve content through `cat`; code execution requires explicit `gixt run`.
+- `run --view` is deprecated in favor of `cat`.
 
 ## [0.3.0] - 2026-08-09
 

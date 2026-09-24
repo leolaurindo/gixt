@@ -2,23 +2,25 @@
 
 # ✨gixt
 
-### Run GitHub Gists as real CLI commands
+### Retrieve and run GitHub Gist artifacts
 
 </div>
 
 Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases. `gixt` makes it easy and safe to run code snippets from GitHub Gists.
 
 ```sh
+gixt cat <gist-name> | agent
 gixt run <gist-name> [-- <args>]
 ```
 
 ## Features and highlights
 
-- Run any gist by name, ID, URL, or `owner/gist`. No setup needed for one-offs.
-- Remember gists you use with `gixt add` (or `gixt run --add`) so they get a friendly name.
+- Retrieve any Gist by name, ID, URL, or `owner/gist`. No setup needed for one-offs.
+- Run code explicitly with `gixt run`; bare targets retrieve content.
+- Remember Gists you use with `gixt add` (or `gixt run --add`) so they get a friendly name.
 - Pin a gist to a fixed revision with `gixt pin`; metadata updates and cache pruning preserve it.
 - Trust-on-first-use per commit: changed revisions prompt again. `gixt trust mine` explicitly snapshots your current gists.
-- Inspect with `--view` and `--dry-run` without changing trust approvals.
+- Inspect metadata with `gist show` and preview execution with `--dry-run` without changing trust approvals.
 - Content cache on by default (ETag/304, retaining latest and pinned revisions); `--no-cache` opts out.
 - No `gh` dependency; public gists work without any token.
 - Command-line friendly: gist output goes to stdout, gixt chatter to stderr, exit codes and signals are propagated.
@@ -64,8 +66,11 @@ For manual downloads and source builds, place `gixt` (macOS/Linux) or `gixt.exe`
 ### First runs
 
 ```sh
-# run any gist by ID or URL (no setup)
-gixt 1234567890abcdef
+# retrieve any gist by ID or URL (no setup)
+gixt cat 1234567890abcdef
+gixt cat https://gist.github.com/you/1234567890abcdef
+
+# run code explicitly
 gixt run https://gist.github.com/you/1234567890abcdef
 
 # remember gists you use so they get a friendly name
@@ -76,8 +81,8 @@ gixt add owner <username>                  # remember all of a user's gists
 # see your known gists
 gixt list
 
-# run by friendly name
-gixt ssh
+# retrieve by friendly name
+gixt cat ssh
 
 # optional: log in for higher rate limits / private gists / mutations
 gixt auth login
@@ -86,8 +91,8 @@ gixt auth login
 **Other examples:**
 
 ```sh
-# one-off, never remembered
-gixt leolaurindo/hello-world -y
+# one-off retrieval, never remembered
+gixt cat leolaurindo/hello-world
 
 # run offline from the cache
 gixt run --offline ssh
@@ -96,7 +101,7 @@ gixt run --offline ssh
 gixt run --python .venv/bin/python app.py
 
 # inspect before running
-gixt run --view leolaurindo/hello-world
+gixt gist show leolaurindo/hello-world
 gixt run --dry-run ssh
 
 # pin a gist to its current revision so runs are stable
