@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-09-25
+
 ### Added
 - `gixt cat` and its `print` alias for byte-exact Gist retrieval, including independently resolved targets and explicit entry selection.
 - Remote owner listing with `gixt list <owner>`, bounded pagination, and read-only results.
 - `gixt add mine` for registering all Gists owned by the authenticated user.
 - Owner-wide local removal with `gixt remove --owner <owner> [--yes]`.
-- Checksum-verified shell and PowerShell installers, with SHA-256 manifests attached to future releases.
+- Checksum-verified shell and PowerShell installers, with SHA-256 manifests attached to releases.
 
 ### Changed
 - `gixt list` defaults to name and owner; `--verbose` adds full IDs, update dates, and wrapped descriptions.
