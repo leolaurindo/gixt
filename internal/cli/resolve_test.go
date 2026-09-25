@@ -89,6 +89,26 @@ func TestResolveTargetReportsFilenameAmbiguity(t *testing.T) {
 	}
 }
 
+func TestResolveTargetOwnerQualifiedAmbiguitySuggestions(t *testing.T) {
+	paths := writeKnown(t, known.Store{Entries: []known.Entry{
+		{ID: "aaa111aaa111", Owner: "leolaurindo", Filenames: []string{"teste.sh"}},
+		{ID: "bbb222bbb222", Owner: "leolaurindo", Filenames: []string{"teste.cmd"}},
+	}})
+
+	_, err := ResolveTarget(context.Background(), "leolaurindo/teste", paths, false)
+	var ambiguous *AmbiguousTargetError
+	if !errors.As(err, &ambiguous) {
+		t.Fatalf("expected ambiguity error, got %T: %v", err, err)
+	}
+	if strings.Contains(strings.Join(ambiguous.Candidates, ", "), "leolaurindo/leolaurindo/teste") {
+		t.Fatalf("suggestions should not repeat the owner prefix: %v", ambiguous.Candidates)
+	}
+	if !strings.Contains(strings.Join(ambiguous.Candidates, ", "), "aaa111aaa111") ||
+		!strings.Contains(strings.Join(ambiguous.Candidates, ", "), "bbb222bbb222") {
+		t.Fatalf("expected gist IDs as disambiguators, got %v", ambiguous.Candidates)
+	}
+}
+
 func TestResolveTargetOwnerQualification(t *testing.T) {
 	paths := writeKnown(t, known.Store{Entries: []known.Entry{
 		{ID: "aaa111aaa111", Owner: "me", Filenames: []string{"tool.sh"}},

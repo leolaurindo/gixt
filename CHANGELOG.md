@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-09-25
+
+### Fixed
+- Avoid repeating the owner prefix in ambiguous target suggestions.
+
 ## [0.4.0] - 2026-09-25
 
 ### Added
