@@ -259,7 +259,7 @@ func disambiguators(input string, entries []known.Entry) []string {
 	}
 	for _, entry := range entries {
 		add(entry.Alias)
-		if entry.Owner != "" {
+		if entry.Owner != "" && !strings.Contains(input, "/") {
 			add(entry.Owner + "/" + input)
 		}
 		add(entry.ID)
