@@ -2,16 +2,20 @@
 
 # ✨gixt
 
-### Retrieve and run GitHub Gist artifacts
-
 </div>
 
-Turn GitHub gists into ephemeral command-line tools, invoking them by friendly names or aliases. `gixt` makes it easy and safe to run code snippets from GitHub Gists.
+Turn GitHub Gists into ephemeral command-line tools with `gixt`. Retrieve prompts and files by name, or run scripts on demand. Give Gists friendly aliases, and review unfamiliar revisions before running them.
 
 ```sh
 gixt cat <gist-name> | agent
 gixt run <gist-name> [-- <args>]
 ```
+
+<div align="center">
+
+![gixt runs a hello-world Gist and composes prompts](assets/gixt-combined-demo.gif)
+
+</div>
 
 ## Features and highlights
 
