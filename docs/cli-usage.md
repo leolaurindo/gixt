@@ -1,116 +1,109 @@
 # CLI Usage Guide
 
-How to run gists, resolve identifiers, control caching, and understand what gixt actually executes.
+`gixt` retrieves Gist artifacts with `cat` and executes code explicitly with `run`.
 
-## Command form and argument forwarding
+## Command forms
 
-```text
-gixt run <gist-id|url|alias|name|owner/name> [-- <args to gist>]
-gixt <gist-id|url|alias|name|owner/name> [-- <args to gist>]   # shorthand
+```sh
+gixt cat <target> [<target> ...]
+gixt print <target> [<target> ...]
+gixt run <target> [--entry <filename>] [-- <args>]
+gixt <target>                         # shorthand for gixt cat <target>
 ```
 
-- Flags before the target configure gixt itself.
-- After the literal `--`, every argument is forwarded to the gist unchanged.
-- Any additional arguments after the target are also forwarded as gist arguments.
-- Show the version with `gixt self version` or `gixt --version`.
+The `print` command is an alias for `cat`. Bare targets retrieve content; execution always requires `gixt run`.
 
-## Identifier resolution
+## Targets and entries
 
-Accepted forms, in order:
+A target identifies a Gist. An entry identifies one file in that Gist.
 
-1. Gist ID or URL (last path segment is extracted).
-2. Known name or alias (from `known.json`).
-3. `owner/gist` — from the known store, falling back to a live lookup of that owner's gists.
+Targets resolve in this order:
 
-When multiple known entries match the same name, gixt prefers your platform's shell variant (`.bat/.cmd/.ps1` on Windows, `.sh/.bash/.zsh` elsewhere) when all candidates are shell scripts; otherwise the match is ambiguous and gixt reports the candidates. Disambiguate with `owner/name`, `name.ext`, or an alias (`--as`).
+1. Gist ID or URL;
+2. known alias;
+3. `owner/name` from the known store, then live owner lookup;
+4. exact full filename among known Gists;
+5. filename stem among known Gists.
 
-## What happens during a run
+An alias identifies a Gist, never a file. An exact filename target carries the requested filename into selection. A stem identifies the Gist but does not force a particular variant. Ambiguous targets remain errors and show disambiguators.
 
-1. The target is resolved to a gist ID.
-2. If the gist is pinned and no `--ref` was given, the pinned revision is used.
-3. gixt contacts GitHub unless `--offline`. Normal runs reuse an unchanged ETag cache; `--no-cache` uses a temporary directory instead. If both are set, offline wins and gixt warns that no-cache mode was ignored.
-4. Files are materialized with path sanitization into `cache/<id>/<sha>`, or into the temporary directory in no-cache mode.
-5. `--view` prints the files and exits. Otherwise gixt resolves the command from `--python`, the chosen file's shebang, or its extension.
-6. `--dry-run` prints that command and exits. Inspection does not prompt for or persist trust.
-7. Before execution, gixt checks trust. An unapproved revision prompts unless `-y` was given.
-8. The command runs in your current directory, or the gist work directory with `--isolate`. Stdio and the child exit status are propagated; `--timeout` cancels long runs.
-9. After success, old cached revisions are pruned while retaining the executed and pinned revisions. `--add` or `--as` also remembers the gist without changing its pin.
+## `cat`
 
-Inspection shortcuts:
-
-- `--view` prints the gist files and exits.
-- `--dry-run` resolves everything, prints the command, and exits before execution.
-
-## Run flags
-
-- `-y`, `--yes`: skip the trust prompt for this run.
-- `--offline`: run the exact requested or pinned cached revision without contacting GitHub. It takes precedence over no-cache mode.
-- `--no-cache`: download to a temp dir and delete it after the run (also `GIXT_NO_CACHE`). This does not disable config or trust-store writes during an executing run.
-- `--python <interpreter>`: override the shebang (e.g. `.venv/bin/python`).
-- `--isolate`: run in the gist work dir instead of the current directory.
-- `--ref <sha>`: run a specific gist revision (overrides a pin for this run).
-- `--view`: print files without executing or changing trust.
-- `--dry-run`: print the resolved command without executing or changing trust.
-- `--add`: remember the gist after a successful run.
-- `--as <name>`: remember it with a custom name (implies `--add`).
-- `--timeout <duration>`: cancel execution after a duration like `30s` or `2m`.
-
-## Authentication
-
-gixt uses direct HTTP and does not require `gh`.
-
-- `gixt auth login`: store a personal access token (scope: `gist`).
-- Token resolution order: `GITHUB_TOKEN` env, stored token, `gh auth token` (only if `gh` happens to be installed).
-- No token at all: public gists still work, with a lower rate limit.
-- Mutations (`gist set-description`, `gist fork`, `trust mine`) require a token.
-
-## Command tree
-
-```text
-gixt
-  run <target> [-- <args>]
-  add
-    <id|url|owner/gist> [--as <name>]
-    owner <login>
-  remove
-    <target>
-    owner <login>
-  list
-    (bare)             # pretty table of known gists
-    refresh
-    clear
-  trust
-    mine
-    list
-    remove <target>
-    clear
-  pin
-    <target> [<sha>]
-    list
-    remove <target>
-    clear
-  gist
-    show <target>
-    set-description <target> <text>
-    clone <target> [--dir <path>]
-    fork <target> [--public] [--description <text>]
-  cache
-    list
-    prune
-    clear
-  auth
-    login [--token <value>]
-    status
-    logout
-  self
-    version
-    update-check
+```sh
+gixt cat review-prompt | agent
+gixt cat review.md style.md | agent
+gixt cat review.md --entry review.md
 ```
 
-## Common errors
+Each target is resolved independently and processed in command-line order. A Gist target emits all files in lexical order. An exact filename target emits that file. `--entry` is valid only with one target.
 
-- `cannot determine how to run <file> (unknown extension)` -> add a shebang to the file.
-- `name "x" matches multiple known gists` -> disambiguate via `owner/name`, `name.ext`, or `--as`.
-- `could not resolve "x" as a gist id, URL, owner/gist, or known name` -> run `gixt add <target> --as <name>` to remember it.
-- `no cached copy of <id>` -> the gist was never run online; drop `--offline`.
-- `this action requires authentication` -> run `gixt auth login`.
+`cat` writes selected bytes directly to stdout. It adds no headers, separators, or newlines, and it never executes code or checks trust. Diagnostics and warnings go to stderr, so binary output and shell pipelines remain safe.
+
+Flags:
+
+- `--offline` — use only the cached revision.
+- `--no-cache` — use a temporary directory and remove it afterwards.
+- `--ref <sha>` — select a specific revision, overriding a pin.
+- `--entry <filename>` / `-e` — select one exact file.
+
+## `run`
+
+```sh
+gixt run cleanup-script -- --dry-run
+gixt run --entry cleanup.sh cleanup-script
+gixt run --python .venv/bin/python script.py
+```
+
+Entry selection order is:
+
+1. explicit `--entry`;
+2. exact filename inferred from the target;
+3. `main.*`;
+4. `index.*`;
+5. a platform shell variant when candidates share a basename;
+6. lexical fallback.
+
+After selection, execution resolution is Python override, shebang, then extension mapping. Trust approval applies only to `run`, keyed by Gist ID and revision.
+
+`run --view` remains temporarily available for compatibility but is deprecated. Use `gixt cat` for retrieval.
+
+## Resolution examples
+
+```sh
+# Exact filename target: selects that file
+gixt run review.sh
+
+# Stem target: resolves the Gist, then uses normal fallback selection
+gixt run review
+
+# Alias identifies the Gist; --entry identifies the file
+gixt run --entry review.sh review-prompt
+```
+
+Use `gixt add <target> --as <name>` to remember an alias. Aliases are globally unique; use `--entry` to select files within the aliased Gist.
+
+Forget remembered entries with `gixt remove <target>`, or remove an owner's local entries with `gixt remove --owner <owner> --yes`.
+
+List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`. Add `--verbose` to show full IDs, update dates, and descriptions wrapped to the available table width.
+
+## Caching, pins, and trust
+
+- Online retrieval uses the existing ETag/cache behavior.
+- `--offline` never contacts GitHub and requires a cached revision.
+- A pin is used when `--ref` is absent.
+- `cat` does not prompt or modify trust.
+- `run` prompts for an unapproved revision unless `--yes` is supplied.
+
+Inspect metadata and files with:
+
+```sh
+gixt gist show <target>
+```
+
+Remember Gists with:
+
+```sh
+gixt add <target> --as <name>
+gixt add owner <owner>
+gixt add mine
+```

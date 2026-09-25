@@ -12,16 +12,15 @@ import (
 	"time"
 )
 
-// BuildCommand resolves the command to run for a gist's files.
+// BuildCommand resolves how to run an already-selected gist entry.
 // Resolution order: python override, shebang, extension mapping.
 // userArgs are appended verbatim after the resolved command.
-func BuildCommand(dir string, files []string, userArgs []string, python string) ([]string, string, error) {
-	if len(files) == 0 {
-		return nil, "", fmt.Errorf("no files in gist to run")
+func BuildCommand(dir string, entry string, userArgs []string, python string) ([]string, string, error) {
+	if entry == "" {
+		return nil, "", fmt.Errorf("no entry selected to run")
 	}
 
-	chosen := selectFile(files)
-	chosenPath := filepath.Join(dir, chosen)
+	chosenPath := filepath.Join(dir, entry)
 
 	if python != "" {
 		return append([]string{python, chosenPath}, userArgs...), "python override", nil
@@ -60,110 +59,6 @@ func Execute(ctx context.Context, dir string, cmd []string) error {
 		return fmt.Errorf("exec %s: %w", cmd[0], err)
 	}
 	return nil
-}
-
-func selectFile(files []string) string {
-	if len(files) == 0 {
-		return ""
-	}
-	mainCandidates := filterByPrefix(files, "main.")
-	if chosen := choosePlatformSpecific(mainCandidates); chosen != "" {
-		return chosen
-	}
-	if len(mainCandidates) > 0 {
-		return mainCandidates[0]
-	}
-	indexCandidates := filterByPrefix(files, "index.")
-	if chosen := choosePlatformSpecific(indexCandidates); chosen != "" {
-		return chosen
-	}
-	if len(indexCandidates) > 0 {
-		return indexCandidates[0]
-	}
-	if chosen := choosePlatformSpecific(files); chosen != "" {
-		return chosen
-	}
-	return files[0]
-}
-
-func filterByPrefix(files []string, prefix string) []string {
-	var out []string
-	for _, f := range files {
-		if strings.HasPrefix(strings.ToLower(filepath.Base(f)), prefix) {
-			out = append(out, f)
-		}
-	}
-	return out
-}
-
-func choosePlatformSpecific(files []string) string {
-	if len(files) == 0 {
-		return ""
-	}
-	allowed := platformAllowedExts()
-	preferred := platformPreferredExts()
-
-	type info struct {
-		files        []string
-		exts         []string
-		allAllowed   bool
-		preferredHit []string
-	}
-	byBase := map[string]*info{}
-	var order []string
-	for _, f := range files {
-		base := strings.ToLower(strings.TrimSuffix(filepath.Base(f), filepath.Ext(f)))
-		ext := strings.ToLower(filepath.Ext(f))
-		if _, ok := byBase[base]; !ok {
-			byBase[base] = &info{allAllowed: true}
-			order = append(order, base)
-		}
-		entry := byBase[base]
-		entry.files = append(entry.files, f)
-		entry.exts = append(entry.exts, ext)
-		if !allowed[ext] {
-			entry.allAllowed = false
-		}
-		if preferred[ext] {
-			entry.preferredHit = append(entry.preferredHit, f)
-		}
-	}
-	for _, base := range order {
-		info := byBase[base]
-		if !info.allAllowed {
-			continue
-		}
-		if len(info.preferredHit) == 1 {
-			return info.preferredHit[0]
-		}
-	}
-	return ""
-}
-
-func platformAllowedExts() map[string]bool {
-	return map[string]bool{
-		".bat":  true,
-		".cmd":  true,
-		".ps1":  true,
-		".sh":   true,
-		".bash": true,
-		".zsh":  true,
-	}
-}
-
-func platformPreferredExts() map[string]bool {
-	if runtime.GOOS == "windows" {
-		return map[string]bool{
-			".bat": true,
-			".cmd": true,
-			".ps1": true,
-		}
-	}
-	return map[string]bool{
-		".sh":   true,
-		".bash": true,
-		".zsh":  true,
-	}
 }
 
 func commandFromShebang(path string) ([]string, string, bool) {

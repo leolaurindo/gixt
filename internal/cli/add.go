@@ -1,6 +1,7 @@
 package cli
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -27,7 +28,14 @@ func newAddCmd() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE:  addOwner,
 	}
-	add.AddCommand(owner)
+	mine := &cobra.Command{
+		Use:   "mine",
+		Short: "remember all of the authenticated user's gists",
+		Args:  cobra.NoArgs,
+		RunE:  addMine,
+	}
+	mine.Flags().String("as", "", "not supported for add mine")
+	add.AddCommand(owner, mine)
 	return add
 }
 
@@ -41,12 +49,16 @@ func addGist(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	alias := mustString(cmd, "as")
+	if err := ensureAliasAvailable(paths, id, alias); err != nil {
+		return err
+	}
 	g, err := client.Fetch(cmd.Context(), id, "")
 	if err != nil {
 		return err
 	}
 	return saveKnown(paths, func(s *known.Store) {
-		known.Upsert(s, toKnownEntry(g, mustString(cmd, "as")))
+		known.Upsert(s, toKnownEntry(g, alias))
 	})
 }
 
@@ -55,8 +67,30 @@ func addOwner(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	return registerOwner(cmd, paths, args[0])
+}
+
+func addMine(cmd *cobra.Command, args []string) error {
+	if cmd.Flags().Changed("as") {
+		return fmt.Errorf("--as is not supported with `add mine`")
+	}
+	paths, err := ensurePaths()
+	if err != nil {
+		return err
+	}
 	client := gist.New(loadToken(paths.AuthFile))
-	items, err := client.ListForOwner(cmd.Context(), args[0], 100, 5)
+	owner, err := client.CurrentUser(cmd.Context())
+	if err != nil {
+		return err
+	}
+	return registerOwner(cmd, paths, owner)
+}
+
+func registerOwner(cmd *cobra.Command, paths config.Paths, owner string) error {
+	client := gist.New(loadToken(paths.AuthFile))
+	items, err := client.ListForOwnerWithProgress(cmd.Context(), owner, 100, 0, func(page, total int) {
+		logf("Loading Gists: page %d (%d found)", page, total)
+	})
 	if err != nil {
 		return err
 	}
@@ -65,8 +99,25 @@ func addOwner(cmd *cobra.Command, args []string) error {
 		entries = append(entries, toKnownEntryFromList(it))
 	}
 	return saveKnown(paths, func(s *known.Store) {
-		s.Entries = replaceOwner(s.Entries, args[0], entries)
+		s.Entries = replaceOwner(s.Entries, owner, entries)
 	})
+}
+
+// saveKnown loads the store, applies mutate, and saves it.
+func ensureAliasAvailable(paths config.Paths, id, alias string) error {
+	if strings.TrimSpace(alias) == "" {
+		return nil
+	}
+	st, err := known.Load(paths.KnownFile)
+	if err != nil {
+		return err
+	}
+	for _, entry := range st.Entries {
+		if entry.ID != id && strings.EqualFold(entry.Alias, alias) {
+			return fmt.Errorf("alias %q is already used by gist %s", alias, entry.ID)
+		}
+	}
+	return nil
 }
 
 // saveKnown loads the store, applies mutate, and saves it.
@@ -82,14 +133,21 @@ func saveKnown(paths config.Paths, mutate func(*known.Store)) error {
 
 func replaceOwner(entries []known.Entry, owner string, fresh []known.Entry) []known.Entry {
 	pins := make(map[string]string)
+	aliases := make(map[string]string)
 	freshIDs := make(map[string]bool, len(fresh))
 	for _, e := range entries {
-		if strings.EqualFold(e.Owner, owner) && e.Pin != "" {
-			pins[e.ID] = e.Pin
+		if strings.EqualFold(e.Owner, owner) {
+			if e.Pin != "" {
+				pins[e.ID] = e.Pin
+			}
+			if e.Alias != "" {
+				aliases[e.ID] = e.Alias
+			}
 		}
 	}
 	for i := range fresh {
 		fresh[i].Pin = pins[fresh[i].ID]
+		fresh[i].Alias = aliases[fresh[i].ID]
 		freshIDs[fresh[i].ID] = true
 	}
 	var kept []known.Entry

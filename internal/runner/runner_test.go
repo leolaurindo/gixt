@@ -14,7 +14,7 @@ func TestBuildCommandUsesExtension(t *testing.T) {
 		t.Fatalf("write main file: %v", err)
 	}
 
-	cmd, reason, err := BuildCommand(dir, []string{"main.py"}, []string{"--foo"}, "")
+	cmd, reason, err := BuildCommand(dir, "main.py", []string{"--foo"}, "")
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestBuildCommandPythonOverride(t *testing.T) {
 	}
 
 	venv := filepath.Join(dir, ".venv", "bin", "python")
-	cmd, reason, err := BuildCommand(dir, []string{"main.py"}, []string{"--foo"}, venv)
+	cmd, reason, err := BuildCommand(dir, "main.py", []string{"--foo"}, venv)
 	if err != nil {
 		t.Fatalf("BuildCommand error: %v", err)
 	}
@@ -54,7 +54,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 		t.Fatalf("write script: %v", err)
 	}
 
-	cmd, reason, err := BuildCommand(dir, []string{"script.txt"}, nil, "")
+	cmd, reason, err := BuildCommand(dir, "script.txt", nil, "")
 	if runtime.GOOS == "windows" {
 		if err == nil {
 			t.Fatalf("expected unknown-extension error on windows (shebang skipped), got %v", cmd)
@@ -75,21 +75,7 @@ func TestBuildCommandRespectsShebangAndUnknownExtension(t *testing.T) {
 	if err := os.WriteFile(unknownPath, []byte("data"), 0o644); err != nil {
 		t.Fatalf("write unknown file: %v", err)
 	}
-	if _, _, err := BuildCommand(dir, []string{"weird.xyz"}, nil, ""); err == nil {
+	if _, _, err := BuildCommand(dir, "weird.xyz", nil, ""); err == nil {
 		t.Fatalf("expected error for unknown extension")
-	}
-}
-
-func TestSelectFilePrefersPlatformVariant(t *testing.T) {
-	files := []string{"test.sh", "test.bat"}
-	chosen := selectFile(files)
-	if runtime.GOOS == "windows" {
-		if filepath.Base(chosen) != "test.bat" {
-			t.Fatalf("expected windows to prefer .bat, got %s", chosen)
-		}
-	} else {
-		if filepath.Base(chosen) != "test.sh" {
-			t.Fatalf("expected non-windows to prefer .sh, got %s", chosen)
-		}
 	}
 }

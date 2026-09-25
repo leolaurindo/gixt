@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
-	"runtime"
+	"sort"
 	"strings"
 
 	"github.com/leolaurindo/gixt/internal/config"
@@ -12,171 +12,258 @@ import (
 	"github.com/leolaurindo/gixt/internal/known"
 )
 
-// resolveTarget maps a user input to a gist ID: direct gist ID/URL, a known
-// name/alias, or owner/gist (from the known store, falling back to a live
-// lookup).
-func resolveTarget(ctx context.Context, input string, paths config.Paths, allowNetwork bool) (string, error) {
+// ResolvedTarget preserves the gist identity and an exact filename inferred
+// from the user's target, when there is one.
+type ResolvedTarget struct {
+	GistID        string
+	RequestedFile string
+}
+
+// TargetNotFoundError identifies a target-resolution miss without conflating
+// it with ambiguity, authentication, or network errors.
+type TargetNotFoundError struct {
+	Target  string
+	Detail  string
+	Suggest bool
+}
+
+func (e *TargetNotFoundError) Error() string {
+	if e.Detail != "" {
+		return e.Detail
+	}
+	return fmt.Sprintf("could not resolve %q", e.Target)
+}
+
+// AmbiguousTargetError reports all known candidates that can disambiguate a
+// target. It is deliberately distinct from TargetNotFoundError.
+type AmbiguousTargetError struct {
+	Target     string
+	Candidates []string
+}
+
+func (e *AmbiguousTargetError) Error() string {
+	if len(e.Candidates) == 0 {
+		return fmt.Sprintf("target %q is ambiguous", e.Target)
+	}
+	return fmt.Sprintf("target %q is ambiguous; use one of: %s", e.Target, strings.Join(e.Candidates, ", "))
+}
+
+// ResolveTarget resolves a target in the order defined by the CLI contract:
+// gist ID/URL, alias, owner/name, exact filename, then filename stem.
+func ResolveTarget(ctx context.Context, input string, paths config.Paths, allowNetwork bool) (ResolvedTarget, error) {
+	input = strings.TrimSpace(input)
 	id := gist.ExtractID(input)
 	if gist.IsLikelyGistID(id) {
-		return id, nil
+		return ResolvedTarget{GistID: id}, nil
 	}
 
 	st, err := known.Load(paths.KnownFile)
 	if err != nil {
-		return "", err
+		return ResolvedTarget{}, err
+	}
+
+	if matches := entriesByAlias(st.Entries, input); len(matches) > 0 {
+		return resolvedOrAmbiguous(input, matches, "")
 	}
 
 	if strings.Contains(input, "/") && !strings.Contains(input, "://") {
 		parts := strings.SplitN(input, "/", 2)
-		ownerPart := strings.ToLower(parts[0])
-		namePart := strings.ToLower(parts[1])
-
-		var matches []known.Entry
-		for _, e := range st.Entries {
-			if strings.EqualFold(e.Owner, ownerPart) && entryMatchesName(e, namePart) {
-				matches = append(matches, e)
-			}
+		if parts[0] == "" || parts[1] == "" {
+			return ResolvedTarget{}, targetNotFound(input, "target must use owner/name", true)
 		}
-		if len(matches) == 1 {
-			return matches[0].ID, nil
+		matches, requested := matchOwnerName(st.Entries, parts[0], parts[1])
+		if len(matches) > 0 {
+			return resolvedOrAmbiguous(input, matches, requested)
 		}
-		if len(matches) > 1 {
-			return "", fmt.Errorf("owner/name %s matches multiple known gists", input)
+		// A slash can also be part of an exact filename path. A known local
+		// filename is unambiguous and avoids an unnecessary owner lookup.
+		if matches, requested := matchFilename(st.Entries, input); len(matches) > 0 {
+			return resolvedOrAmbiguous(input, matches, requested)
 		}
 		if !allowNetwork {
-			return "", fmt.Errorf("cannot resolve unknown owner/name %s while offline", input)
+			return ResolvedTarget{}, targetNotFound(input,
+				fmt.Sprintf("cannot resolve unknown owner/name %s while offline", input), false)
 		}
 
-		live, err := findOwnerNameLive(ctx, parts[0], namePart, paths)
+		live, err := findOwnerNameLive(ctx, parts[0], parts[1], paths)
 		if err != nil {
-			return "", err
+			return ResolvedTarget{}, err
 		}
-		if len(live) == 1 {
-			return live[0].ID, nil
+		if len(live.matches) > 0 {
+			return resolvedOrAmbiguous(input, live.matches, live.requested)
 		}
-		if len(live) > 1 {
-			return "", fmt.Errorf("owner/name %s matches multiple gists", input)
-		}
-		return "", fmt.Errorf("could not find %q among %s's gists", parts[1], parts[0])
+		return ResolvedTarget{}, targetNotFound(input,
+			fmt.Sprintf("could not find %q among %s's gists", parts[1], parts[0]), true)
 	}
 
-	matches := known.Name(st, input)
-	matches = preferPlatform(matches, strings.ToLower(input))
-	if len(matches) == 1 {
-		return matches[0].ID, nil
+	if matches, requested := matchFilename(st.Entries, input); len(matches) > 0 {
+		return resolvedOrAmbiguous(input, matches, requested)
 	}
-	if len(matches) > 1 {
-		return "", fmt.Errorf("name %q matches multiple known gists (use owner/name or --as)", input)
-	}
-	return "", fmt.Errorf("could not resolve %q as a gist id, URL, owner/gist, or known name (run `gixt add <target> --as <name>` to remember it)", input)
+
+	return ResolvedTarget{}, targetNotFound(input,
+		fmt.Sprintf("could not resolve %q as a gist id, URL, owner/gist, or known name (run `gixt add <target> --as <name>` to remember it)", input), true)
 }
 
-func entryMatchesName(e known.Entry, targetLower string) bool {
-	if strings.EqualFold(e.Alias, targetLower) {
-		return true
+// resolveTarget is retained for commands that only need the gist identity.
+func resolveTarget(ctx context.Context, input string, paths config.Paths, allowNetwork bool) (string, error) {
+	target, err := ResolveTarget(ctx, input, paths, allowNetwork)
+	return target.GistID, err
+}
+
+func targetNotFound(target, detail string, suggest bool) *TargetNotFoundError {
+	return &TargetNotFoundError{Target: target, Detail: detail, Suggest: suggest}
+}
+
+func resolvedOrAmbiguous(input string, matches []known.Entry, requested string) (ResolvedTarget, error) {
+	matches = uniqueEntries(matches)
+	if len(matches) != 1 {
+		return ResolvedTarget{}, &AmbiguousTargetError{
+			Target:     input,
+			Candidates: disambiguators(input, matches),
+		}
 	}
-	for _, f := range e.Filenames {
-		if filenameMatches(targetLower, f) {
+	return ResolvedTarget{GistID: matches[0].ID, RequestedFile: requested}, nil
+}
+
+func entriesByAlias(entries []known.Entry, input string) []known.Entry {
+	var matches []known.Entry
+	for _, entry := range entries {
+		if strings.EqualFold(entry.Alias, input) {
+			matches = append(matches, entry)
+		}
+	}
+	return uniqueEntries(matches)
+}
+
+func matchOwnerName(entries []known.Entry, owner, name string) ([]known.Entry, string) {
+	var scoped []known.Entry
+	for _, entry := range entries {
+		if strings.EqualFold(entry.Owner, owner) {
+			scoped = append(scoped, entry)
+		}
+	}
+	if len(scoped) == 0 {
+		return nil, ""
+	}
+
+	var aliases []known.Entry
+	for _, entry := range scoped {
+		if strings.EqualFold(entry.Alias, name) {
+			aliases = append(aliases, entry)
+		}
+	}
+	if len(aliases) > 0 {
+		return uniqueEntries(aliases), ""
+	}
+
+	var exact []known.Entry
+	for _, entry := range scoped {
+		if hasExactFilename(entry, name) {
+			exact = append(exact, entry)
+		}
+	}
+	if len(exact) > 0 {
+		return uniqueEntries(exact), name
+	}
+
+	var stems []known.Entry
+	for _, entry := range scoped {
+		if hasFilenameStem(entry, name) {
+			stems = append(stems, entry)
+		}
+	}
+	return uniqueEntries(stems), ""
+}
+
+type ownerLookup struct {
+	matches   []known.Entry
+	requested string
+}
+
+// findOwnerNameLive resolves owner/name against GitHub live.
+func findOwnerNameLive(ctx context.Context, owner, name string, paths config.Paths) (ownerLookup, error) {
+	client := gist.New(loadToken(paths.AuthFile))
+	items, err := client.ListForOwner(ctx, owner, 100, 5)
+	if err != nil {
+		return ownerLookup{}, err
+	}
+	entries := make([]known.Entry, 0, len(items))
+	for _, item := range items {
+		entries = append(entries, toKnownEntryFromList(item))
+	}
+	matches, requested := matchOwnerName(entries, owner, name)
+	return ownerLookup{matches: matches, requested: requested}, nil
+}
+
+func matchFilename(entries []known.Entry, input string) ([]known.Entry, string) {
+	var exact []known.Entry
+	for _, entry := range entries {
+		if hasExactFilename(entry, input) {
+			exact = append(exact, entry)
+		}
+	}
+	if len(exact) > 0 {
+		return uniqueEntries(exact), input
+	}
+
+	var stems []known.Entry
+	for _, entry := range entries {
+		if hasFilenameStem(entry, input) {
+			stems = append(stems, entry)
+		}
+	}
+	return uniqueEntries(stems), ""
+}
+
+func hasExactFilename(entry known.Entry, filename string) bool {
+	for _, candidate := range entry.Filenames {
+		if candidate == filename {
 			return true
 		}
 	}
 	return false
 }
 
-// findOwnerNameLive resolves owner/name against GitHub live.
-func findOwnerNameLive(ctx context.Context, owner, nameLower string, paths config.Paths) ([]known.Entry, error) {
-	client := gist.New(loadToken(paths.AuthFile))
-	items, err := client.ListForOwner(ctx, owner, 100, 5)
-	if err != nil {
-		return nil, err
-	}
-	var matches []known.Entry
-	for _, it := range items {
-		if entryMatchesName(toKnownEntryFromList(it), nameLower) {
-			matches = append(matches, toKnownEntryFromList(it))
+func hasFilenameStem(entry known.Entry, stem string) bool {
+	stem = strings.ToLower(stem)
+	for _, filename := range entry.Filenames {
+		base := filepath.Base(filename)
+		if strings.ToLower(strings.TrimSuffix(base, filepath.Ext(base))) == stem {
+			return true
 		}
 	}
-	return matches, nil
+	return false
 }
 
-func filenameMatches(targetLower, filename string) bool {
-	base := strings.ToLower(strings.TrimSuffix(filepath.Base(filename), filepath.Ext(filename)))
-	full := strings.ToLower(filepath.Base(filename))
-	return targetLower == base || targetLower == full
-}
-
-func preferPlatform(matches []known.Entry, targetLower string) []known.Entry {
-	if len(matches) <= 1 {
-		return matches
-	}
-	allowed := platformAllowedExts()
-	preferred := platformPreferredExts()
-
-	type candidate struct {
-		entry known.Entry
-		exts  []string
-	}
-	var candidates []candidate
-	for _, e := range matches {
-		var matchedExts []string
-		for _, f := range e.Filenames {
-			if filenameMatches(targetLower, f) {
-				matchedExts = append(matchedExts, strings.ToLower(filepath.Ext(f)))
-			}
-		}
-		if len(matchedExts) == 0 {
+func uniqueEntries(entries []known.Entry) []known.Entry {
+	seen := make(map[string]bool, len(entries))
+	out := make([]known.Entry, 0, len(entries))
+	for _, entry := range entries {
+		if entry.ID == "" || seen[entry.ID] {
 			continue
 		}
-		candidates = append(candidates, candidate{entry: e, exts: matchedExts})
+		seen[entry.ID] = true
+		out = append(out, entry)
 	}
+	return out
+}
 
-	for _, c := range candidates {
-		for _, ext := range c.exts {
-			if !allowed[ext] {
-				return matches
-			}
-		}
-	}
-
+func disambiguators(input string, entries []known.Entry) []string {
 	seen := map[string]bool{}
-	var preferredEntries []known.Entry
-	for _, c := range candidates {
-		for _, ext := range c.exts {
-			if preferred[ext] && !seen[c.entry.ID] {
-				preferredEntries = append(preferredEntries, c.entry)
-				seen[c.entry.ID] = true
-				break
-			}
+	var out []string
+	add := func(value string) {
+		if value != "" && !seen[value] {
+			seen[value] = true
+			out = append(out, value)
 		}
 	}
-	if len(preferredEntries) == 1 {
-		return preferredEntries
-	}
-	return matches
-}
-
-func platformAllowedExts() map[string]bool {
-	return map[string]bool{
-		".bat":  true,
-		".cmd":  true,
-		".ps1":  true,
-		".sh":   true,
-		".bash": true,
-		".zsh":  true,
-	}
-}
-
-func platformPreferredExts() map[string]bool {
-	if runtime.GOOS == "windows" {
-		return map[string]bool{
-			".bat": true,
-			".cmd": true,
-			".ps1": true,
+	for _, entry := range entries {
+		add(entry.Alias)
+		if entry.Owner != "" {
+			add(entry.Owner + "/" + input)
 		}
+		add(entry.ID)
 	}
-	return map[string]bool{
-		".sh":   true,
-		".bash": true,
-		".zsh":  true,
-	}
+	sort.Strings(out)
+	return out
 }

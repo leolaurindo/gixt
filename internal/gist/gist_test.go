@@ -2,11 +2,13 @@ package gist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 )
 
 func gistJSON(id, rawURL string) string {
@@ -95,6 +97,35 @@ func TestAuthHeaderSent(t *testing.T) {
 	}
 }
 
+func TestListForOwnerWithProgress(t *testing.T) {
+	var pages []int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/users/me/gists" {
+			t.Fatalf("unexpected path: %s", r.URL.Path)
+		}
+		page := 1
+		if r.URL.Query().Get("page") == "2" {
+			page = 2
+		}
+		if page == 1 {
+			w.Write([]byte(`[{"id":"one"},{"id":"two"}]`))
+			return
+		}
+		w.Write([]byte(`[{"id":"three"}]`))
+	}))
+	defer srv.Close()
+
+	items, err := newWithBase(srv.URL, "").ListForOwnerWithProgress(context.Background(), "me", 2, 0, func(page, total int) {
+		pages = append(pages, page, total)
+	})
+	if err != nil {
+		t.Fatalf("ListForOwnerWithProgress error: %v", err)
+	}
+	if len(items) != 3 || len(pages) != 4 || pages[0] != 1 || pages[1] != 2 || pages[2] != 2 || pages[3] != 3 {
+		t.Fatalf("unexpected items or progress: %d, %v", len(items), pages)
+	}
+}
+
 func TestListMineRequiresAuthAndPaginates(t *testing.T) {
 	requests := 0
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -143,6 +174,25 @@ func TestDownload(t *testing.T) {
 	}
 	if string(data) != "script-body" {
 		t.Fatalf("unexpected body: %s", data)
+	}
+}
+
+func TestRateLimitErrorIncludesRetryHints(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Retry-After", "3")
+		w.Header().Set("X-RateLimit-Reset", "2000000000")
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(`{"message":"secondary rate limit"}`))
+	}))
+	defer srv.Close()
+
+	_, err := newWithBase(srv.URL, "").Fetch(context.Background(), "rate-limited", "")
+	var rateLimit *RateLimitError
+	if !errors.As(err, &rateLimit) {
+		t.Fatalf("expected rate-limit error, got %T: %v", err, err)
+	}
+	if !rateLimit.HasRetryAfter || rateLimit.RetryAfter != 3*time.Second || rateLimit.StatusCode != http.StatusTooManyRequests {
+		t.Fatalf("unexpected rate-limit details: %+v", rateLimit)
 	}
 }
 

@@ -50,9 +50,13 @@ jobs:
       - name: Build
         run: |
           mkdir -p dist
-          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build \
-            -ldflags "-X github.com/leolaurindo/gixt/internal/version.Version=${VERSION}" \
+          GOOS=${{ matrix.goos }} GOARCH=${{ matrix.goarch }} go build -trimpath \
+            -ldflags "-s -w -X github.com/leolaurindo/gixt/internal/version.Version=${VERSION}" \
             -o dist/gixt${{ matrix.ext }} ./cmd/gixt
+
+      - name: Verify injected version
+        if: matrix.goos == 'linux' && matrix.goarch == 'amd64'
+        run: test "$(dist/gixt --version)" = "gixt version ${VERSION}"
 
       - name: Package
         run: |

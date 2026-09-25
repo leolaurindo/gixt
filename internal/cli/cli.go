@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -23,7 +24,7 @@ const (
 )
 
 var knownCommands = []string{
-	"run", "add", "remove", "list", "trust", "pin", "gist", "cache", "auth", "self",
+	"cat", "print", "run", "add", "remove", "list", "trust", "pin", "gist", "cache", "auth", "self",
 	"help", "completion",
 }
 
@@ -36,8 +37,8 @@ func Execute(ctx context.Context, args []string) error {
 func newRootCmd() *cobra.Command {
 	root := &cobra.Command{
 		Use:           "gixt",
-		Short:         "run code directly from GitHub gists",
-		Long:          "gixt turns GitHub gists into ephemeral CLI commands.\n\nUse `gixt run <target>` or the shorthand `gixt <target>`, where <target> is a gist id, URL, owner/gist, or a name you remembered with `gixt add`.",
+		Short:         "retrieve and run GitHub gist artifacts",
+		Long:          "gixt retrieves Gist files with `gixt cat <target>` and executes one selected file with `gixt run <target>`. A bare target is shorthand for `gixt cat <target>`.",
 		Version:       version.Version,
 		SilenceUsage:  true,
 		SilenceErrors: true,
@@ -46,14 +47,19 @@ func newRootCmd() *cobra.Command {
 			if len(args) == 0 {
 				return cmd.Help()
 			}
-			if s := suggestCommand(args[0]); s != "" {
-				return fmt.Errorf("unknown command %q, did you mean %q?", args[0], s)
+			err := catTargets(cmd, args)
+			var notFound *TargetNotFoundError
+			if errors.As(err, &notFound) && notFound.Suggest {
+				if s := suggestCommand(args[0]); s != "" {
+					return fmt.Errorf("unknown command %q, did you mean %q?", args[0], s)
+				}
 			}
-			return runTarget(cmd, args)
+			return err
 		},
 	}
-	addRunFlags(root.Flags())
+	addCatFlags(root.Flags())
 	root.AddCommand(
+		newCatCmd(),
 		newRunCmd(),
 		newAddCmd(),
 		newRemoveCmd(),
