@@ -86,6 +86,41 @@ Forget remembered entries with `gixt remove <target>`, or remove an owner's loca
 
 List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`. Add `--verbose` to show full IDs, update dates, and descriptions wrapped to the available table width.
 
+## Self-management and updates
+
+```sh
+gixt self version
+gixt self update-check
+gixt self update
+```
+
+`update-check` compares your version with the latest stable GitHub release.
+`update` downloads the matching platform archive, verifies its SHA-256 checksum
+from that release, and replaces the executable you actually ran. Symlinks are
+preserved; their resolved executable is updated. Existing versioned installations
+are not downgraded, and config, cache, and trust data are untouched.
+
+- **Script, manual download, Go-installed, and source-built binaries:** update
+  directly to the official prebuilt release. Custom Go build settings are not
+  preserved. To keep a Go-based build, use
+  `go install github.com/leolaurindo/gixt/cmd/gixt@latest` instead.
+- **Homebrew:** detect the resolved Cellar path and verify it against
+  `brew --prefix gixt`, then print `brew upgrade gixt`. No upgrade is run and
+  managed binaries are never overwritten. The tap's version can lag GitHub;
+  `update-check` still reports the GitHub version.
+- **Other package managers:** automatic detection is not supported yet. Use
+  your package manager's update command rather than `self update`.
+
+Updates require write access to the executable's directory; gixt does not elevate
+privileges. Downloads are bounded and failures before replacement leave the
+current executable intact. Unix replacement is atomic. Windows uses a backup
+and rolls back if installation fails; a `.gixt.exe.old` backup can remain while
+the old executable is running and is removed by the next update.
+
+Concurrent updates are rejected. If an interrupted update leaves an
+`.update-lock` file, remove the lock path reported by the error only after
+confirming no update is running.
+
 ## Caching, pins, and trust
 
 - Online retrieval uses the existing ETag/cache behavior.

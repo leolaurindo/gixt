@@ -59,13 +59,32 @@ Requires Go 1.21 or newer:
 go install github.com/leolaurindo/gixt/cmd/gixt@latest
 ```
 
-### Option 4: Build from source
+### Option 4: Homebrew
+
+```sh
+brew install leolaurindo/tap/gixt
+```
+
+### Option 5: Build from source
 
 ```sh
 go build -o bin/gixt ./cmd/gixt
 ```
 
 For manual downloads and source builds, place `gixt` (macOS/Linux) or `gixt.exe` (Windows) somewhere on your `PATH`.
+
+### Updating
+
+```sh
+gixt self update-check
+gixt self update
+```
+
+Standalone installations update to a checksum-verified release binary. This
+includes Go-installed and source-built copies; custom build settings are replaced.
+Homebrew installations receive `brew upgrade gixt` instructions instead. Other
+package managers are not automatically detected; update those through their manager.
+See the [CLI usage guide](docs/cli-usage.md#self-management-and-updates) for details.
 
 ### First runs
 
