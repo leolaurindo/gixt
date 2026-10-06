@@ -24,6 +24,7 @@ func newSelfCmd() *cobra.Command {
 	c.AddCommand(
 		&cobra.Command{Use: "version", Short: "print the gixt version", Args: cobra.NoArgs, RunE: selfVersion},
 		&cobra.Command{Use: "update-check", Short: "check whether a newer gixt release exists", Args: cobra.NoArgs, RunE: selfUpdateCheck},
+		&cobra.Command{Use: "update", Short: "update gixt to the latest release (Homebrew installations receive update instructions)", Args: cobra.NoArgs, RunE: selfUpdate},
 	)
 	return c
 }
