@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-06
+
+### Added
+- `gixt self update` installs checksum-verified release binaries for standalone installations, including Go-installed copies, and provides update instructions for verified Homebrew installations.
+
 ## [0.4.2] - 2026-10-06
 
 ### Fixed
