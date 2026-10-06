@@ -49,7 +49,7 @@ func newRootCmd() *cobra.Command {
 			}
 			err := catTargets(cmd, args)
 			var notFound *TargetNotFoundError
-			if errors.As(err, &notFound) && notFound.Suggest {
+			if errors.As(err, &notFound) && notFound.Suggest && notFound.Target == strings.TrimSpace(args[0]) {
 				if s := suggestCommand(args[0]); s != "" {
 					return fmt.Errorf("unknown command %q, did you mean %q?", args[0], s)
 				}
