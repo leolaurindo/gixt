@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.4] - 2026-10-14
+
+### Fixed
+- Run Windows gist scripts with Python shebangs even without a `.py` extension, preferring the Python launcher (`py`) and falling back to `python` without renaming the script.
+
 ## [0.4.3] - 2026-10-06
 
 ### Added
