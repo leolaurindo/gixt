@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"runtime"
 	"strings"
 	"time"
@@ -16,6 +17,10 @@ import (
 // Resolution order: python override, shebang, extension mapping.
 // userArgs are appended verbatim after the resolved command.
 func BuildCommand(dir string, entry string, userArgs []string, python string) ([]string, string, error) {
+	return buildCommand(dir, entry, userArgs, python, runtime.GOOS, exec.LookPath)
+}
+
+func buildCommand(dir string, entry string, userArgs []string, python string, goos string, lookPath func(string) (string, error)) ([]string, string, error) {
 	if entry == "" {
 		return nil, "", fmt.Errorf("no entry selected to run")
 	}
@@ -26,13 +31,11 @@ func BuildCommand(dir string, entry string, userArgs []string, python string) ([
 		return append([]string{python, chosenPath}, userArgs...), "python override", nil
 	}
 
-	if runtime.GOOS != "windows" {
-		if cmd, reason, ok := commandFromShebang(chosenPath); ok {
-			return append(cmd, userArgs...), reason, nil
-		}
+	if cmd, reason, ok := commandFromShebang(chosenPath, goos, lookPath); ok {
+		return append(cmd, userArgs...), reason, nil
 	}
 
-	cmd, reason, err := commandFromExtension(chosenPath)
+	cmd, reason, err := commandFromExtension(chosenPath, goos)
 	if err != nil {
 		return nil, "", err
 	}
@@ -61,7 +64,13 @@ func Execute(ctx context.Context, dir string, cmd []string) error {
 	return nil
 }
 
-func commandFromShebang(path string) ([]string, string, bool) {
+var pythonShebang = regexp.MustCompile(`^python(?:[23](?:\.[0-9]+)?)?$`)
+
+func commandFromShebang(path string, goos string, lookPath func(string) (string, error)) ([]string, string, bool) {
+	// Keep Windows .py files on the established extension-based runner.
+	if goos == "windows" && strings.EqualFold(filepath.Ext(path), ".py") {
+		return nil, "", false
+	}
 	fh, err := os.Open(path)
 	if err != nil {
 		return nil, "", false
@@ -80,10 +89,25 @@ func commandFromShebang(path string) ([]string, string, bool) {
 	if len(parts) == 0 {
 		return nil, "", false
 	}
+	if goos == "windows" {
+		if filepath.Base(parts[0]) == "env" {
+			parts = parts[1:]
+			if len(parts) > 0 && parts[0] == "-S" {
+				parts = parts[1:]
+			}
+		}
+		if len(parts) == 0 || !pythonShebang.MatchString(filepath.Base(parts[0])) {
+			return nil, "", false
+		}
+		if launcher, err := lookPath("py"); err == nil {
+			return []string{launcher, path}, "shebang", true
+		}
+		parts[0] = "python"
+	}
 	return append(parts, path), "shebang", true
 }
 
-func commandFromExtension(path string) ([]string, string, error) {
+func commandFromExtension(path string, goos string) ([]string, string, error) {
 	ext := strings.ToLower(filepath.Ext(path))
 	switch ext {
 	case ".sh":
@@ -91,7 +115,7 @@ func commandFromExtension(path string) ([]string, string, error) {
 	case ".ps1":
 		return []string{"powershell", "-ExecutionPolicy", "Bypass", "-File", path}, "extension .ps1", nil
 	case ".bat", ".cmd":
-		if runtime.GOOS == "windows" {
+		if goos == "windows" {
 			return []string{"cmd", "/C", path}, "extension .bat", nil
 		}
 		return []string{path}, "extension .bat", nil
