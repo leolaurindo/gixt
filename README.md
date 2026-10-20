@@ -138,6 +138,20 @@ gixt trust mine
 gixt trust list
 ```
 
+## Agent skill
+
+The [gixt skill](skills/gixt/SKILL.md) teaches agents how to retrieve gist content and run scripts with gixt. Install the CLI first, then ask your agent:
+
+> Read https://github.com/leolaurindo/gixt/blob/main/skills/gixt/SKILL.md and install it in your skills directory.
+
+Or install manually on the directory your agent discover skills from, such as`~/.agents/skills`:
+
+```sh
+mkdir -p ~/.agents/skills/gixt
+curl -fsSL https://raw.githubusercontent.com/leolaurindo/gixt/main/skills/gixt/SKILL.md \
+  -o ~/.agents/skills/gixt/SKILL.md
+```
+
 ## Trust model
 
 gixt uses **trust-on-first-use keyed by commit**:
