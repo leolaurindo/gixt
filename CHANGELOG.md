@@ -7,7 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-20
+
 ### Added
+- A minimal gixt agent skill with README installation instructions.
 - `gixt gist create` and `gixt gist update` publish local text or script files using gixt authentication, preserving existing aliases, pins, and files not supplied in updates.
 - `gixt gist delete` permanently deletes a remote gist with interactive confirmation or `--yes`, then forgets its local registration; `gixt remove` remains local-only.
 
