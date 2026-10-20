@@ -36,7 +36,32 @@ func newGistCmd() *cobra.Command {
 	fork.Flags().Bool("public", false, "create the fork as public (default: private)")
 	fork.Flags().String("description", "", "description for the new gist")
 
+	create := &cobra.Command{
+		Use:   "create <files...>",
+		Short: "create a gist from local text or script files",
+		Args:  cobra.MinimumNArgs(1),
+		RunE:  gistCreate,
+	}
+	create.Flags().Bool("public", false, "create a public gist (default: secret)")
+	create.Flags().String("description", "", "description for the new gist")
+
+	deleteCmd := &cobra.Command{
+		Use:   "delete <target>",
+		Short: "permanently delete a gist from GitHub and forget it locally",
+		Args:  cobra.ExactArgs(1),
+		RunE:  gistDelete,
+	}
+	deleteCmd.Flags().Bool("yes", false, "confirm remote deletion without prompting")
+
 	c.AddCommand(
+		create,
+		deleteCmd,
+		&cobra.Command{
+			Use:   "update <target> <files...>",
+			Short: "add or replace gist files from local files, preserving other files",
+			Args:  cobra.MinimumNArgs(2),
+			RunE:  gistUpdate,
+		},
 		&cobra.Command{
 			Use:   "show <target>",
 			Short: "show a gist's metadata and files",

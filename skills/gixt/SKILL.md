@@ -22,16 +22,18 @@ gixt pin <target>                 # Pin the current revision
 
 Use `gixt --help` or `gixt <command> --help` for other options.
 
-## Create or edit gists
+## Create, edit, or delete gists
 
-When requested, use the GitHub CLI (`gh`, authenticated separately); gixt does not create gists or edit file contents.
+When requested, create or update gists from local files using gixt authentication.
 
 ```sh
-gh gist create <local-file> --desc "<description>"
-gh gist edit <id-or-url> --filename <gist-filename> <local-file>
+gixt gist create <files...> --description "<description>"
+gixt gist update <target> <files...>
 ```
 
-Gists are secret by default, not private; use `--public` only when requested. Never upload credentials or secrets. Resolve gixt aliases with `gixt gist show <target>` before editing with `gh`.
+Local basenames become gist filenames. Updates add or replace supplied files and preserve other files. Gists are secret by default, not private; use `--public` only when requested. Never upload credentials or secrets.
+
+`gixt gist delete <target>` permanently deletes the entire remote gist and forgets its local registration. It prompts by default; use `--yes` for explicitly authorized non-interactive deletion. `gixt remove <target>` only forgets the local registration.
 
 - Text: use descriptive `.md` or `.txt` filenames; retrieve with `gixt cat`.
 - Scripts: use the appropriate extension (e.g. `.py`, `.sh`) and a shebang where needed; execute with `gixt run`. For multi-file gists, use `--entry <filename>` to select the script.
