@@ -2,10 +2,13 @@ package gist
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -272,5 +275,72 @@ func TestMutationRequiresToken(t *testing.T) {
 	}
 	if _, err := c.UpdateDescription(context.Background(), "abc", "x"); err == nil {
 		t.Fatal("expected error when not authenticated")
+	}
+	if _, err := c.UpdateFiles(context.Background(), "abc", map[string]string{"main.py": "print(1)"}); err == nil {
+		t.Fatal("expected error when not authenticated")
+	}
+}
+
+func TestUpdateFiles(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusForbidden, http.StatusNotFound, http.StatusUnprocessableEntity} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodPatch || r.URL.Path != "/gists/abcdef1234567890" || r.Header.Get("Authorization") != "Bearer sekret" {
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+				}
+				var payload map[string]any
+				if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+					t.Error(err)
+				}
+				want := map[string]any{"files": map[string]any{"main.py": map[string]any{"content": "print(1)"}, "prompt.md": map[string]any{"content": "Review this."}}}
+				if !reflect.DeepEqual(payload, want) {
+					t.Errorf("payload = %#v, want %#v", payload, want)
+				}
+				w.WriteHeader(status)
+				if status == http.StatusOK {
+					fmt.Fprint(w, gistJSON("abcdef1234567890", "https://example.com/raw"))
+				} else {
+					fmt.Fprint(w, `{"message":"write rejected"}`)
+				}
+			}))
+			defer srv.Close()
+			g, err := newWithBase(srv.URL, "sekret").UpdateFiles(context.Background(), "abcdef1234567890", map[string]string{"main.py": "print(1)", "prompt.md": "Review this."})
+			if status == http.StatusOK {
+				if err != nil || g.ID != "abcdef1234567890" {
+					t.Fatalf("result = %+v, %v", g, err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), fmt.Sprint(status)) {
+				t.Fatalf("expected HTTP %d error, got %v", status, err)
+			}
+		})
+	}
+}
+
+func TestDelete(t *testing.T) {
+	for _, status := range []int{http.StatusNoContent, http.StatusUnauthorized, http.StatusForbidden, http.StatusNotFound} {
+		t.Run(fmt.Sprint(status), func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Method != http.MethodDelete || r.URL.Path != "/gists/abcdef1234567890" || r.Header.Get("Authorization") != "Bearer sekret" {
+					t.Errorf("unexpected request: %s %s", r.Method, r.URL)
+				}
+				body, err := io.ReadAll(r.Body)
+				if err != nil || len(body) != 0 {
+					t.Errorf("unexpected body %q: %v", body, err)
+				}
+				w.WriteHeader(status)
+			}))
+			defer srv.Close()
+			err := newWithBase(srv.URL, "sekret").Delete(context.Background(), "abcdef1234567890")
+			if status == http.StatusNoContent {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), fmt.Sprint(status)) {
+				t.Fatalf("expected HTTP %d error, got %v", status, err)
+			}
+		})
+	}
+	if err := newWithBase("http://unused", "").Delete(context.Background(), "abcdef1234567890"); err == nil {
+		t.Fatal("expected authentication error")
 	}
 }

@@ -346,13 +346,30 @@ func (c *Client) Create(ctx context.Context, files map[string]string, descriptio
 	return c.send(ctx, http.MethodPost, "/gists", payload)
 }
 
+func (c *Client) UpdateFiles(ctx context.Context, id string, files map[string]string) (Gist, error) {
+	updates := make(map[string]map[string]string, len(files))
+	for name, content := range files {
+		updates[name] = map[string]string{"content": content}
+	}
+	return c.send(ctx, http.MethodPatch, fmt.Sprintf("/gists/%s", id), map[string]any{"files": updates})
+}
+
+func (c *Client) Delete(ctx context.Context, id string) error {
+	_, err := c.send(ctx, http.MethodDelete, fmt.Sprintf("/gists/%s", id), nil)
+	return err
+}
+
 func (c *Client) send(ctx context.Context, method, path string, payload any) (Gist, error) {
 	if c.token == "" {
 		return Gist{}, errors.New("this action requires authentication; run `gixt auth login`")
 	}
-	body, err := json.Marshal(payload)
-	if err != nil {
-		return Gist{}, fmt.Errorf("encode payload: %w", err)
+	var body []byte
+	if payload != nil {
+		var err error
+		body, err = json.Marshal(payload)
+		if err != nil {
+			return Gist{}, fmt.Errorf("encode payload: %w", err)
+		}
 	}
 	req, err := http.NewRequestWithContext(ctx, method, c.base+path, bytes.NewReader(body))
 	if err != nil {
@@ -373,6 +390,9 @@ func (c *Client) send(ctx context.Context, method, path string, payload any) (Gi
 	}
 	if resp.StatusCode >= 300 {
 		return Gist{}, fmt.Errorf("github api %s %s: http %d: %s", method, path, resp.StatusCode, strings.TrimSpace(string(data)))
+	}
+	if resp.StatusCode == http.StatusNoContent {
+		return Gist{}, nil
 	}
 	var g Gist
 	if err := json.Unmarshal(data, &g); err != nil {

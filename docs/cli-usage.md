@@ -86,6 +86,40 @@ Forget remembered entries with `gixt remove <target>`, or remove an owner's loca
 
 List remembered entries with `gixt list`, or inspect an owner's remote Gists with `gixt list <owner> --limit 30`. Add `--verbose` to show full IDs, update dates, and descriptions wrapped to the available table width.
 
+## Create and update gists
+
+```sh
+# Create a secret gist from local text or script files
+gixt gist create prompt.md --description "Review prompt"
+gixt gist create main.py helpers.py
+
+# Public creation is explicit
+gixt gist create main.py --public
+
+# Add or replace files in an existing gist
+gixt gist update <target> prompt.md
+gixt gist update <target> main.py helpers.py
+```
+
+Both commands require authentication through `gixt auth login` or an existing token (see `gixt auth --help`). New gists are secret by default, not private: anyone with the URL can access them. Never upload credentials or secrets.
+
+Local basenames become gist filenames. Inputs must be non-empty UTF-8 text files; directories and duplicate basenames are rejected. Text and runnable scripts use the same upload mechanism. Use descriptive `.md`/`.txt` names for text, and appropriate extensions or shebangs for scripts. There is no stdin, interactive editor, individual-file deletion, or renaming support.
+
+`update` accepts normal gixt targets and adds or replaces only supplied files, preserving all other remote files and the gist's description and visibility. A filename target identifies the gist, not a destination filename: local basenames still determine which files are written. Updates always modify the live gist, even when its local alias is pinned.
+
+Both commands print the resulting gist URL to stdout and refresh the known-gist metadata. Existing aliases and pins are preserved; no alias or trust approval is automatically granted. A pinned gist continues to retrieve/run its pinned revision, and running an updated unpinned gist requires approval of the new revision.
+
+## Delete a remote gist
+
+```sh
+gixt gist delete <target>          # Confirm interactively
+gixt gist delete <target> --yes    # Explicit non-interactive confirmation
+```
+
+Unlike `gixt remove`, which only forgets a local registration, `gist delete` permanently deletes the entire gist from GitHub. It requires authentication and accepts normal gixt targets. A filename target or pinned alias still deletes the entire live gist, not a single file or revision.
+
+Without `--yes`, deletion requires interactive confirmation and refuses non-interactive input. After GitHub confirms deletion, gixt forgets the local registration (including aliases and pins) and prints the gist URL. API failures leave local registrations unchanged. Cached files and trust records are retained; use the cache and trust commands to clear them if needed.
+
 ## Self-management and updates
 
 ```sh

@@ -129,6 +129,15 @@ gixt run --python .venv/bin/python app.py
 gixt gist show leolaurindo/hello-world
 gixt run --dry-run ssh
 
+# create a secret gist or update its files (requires authentication)
+gixt gist create prompt.md --description "Review prompt" ## --public should be explicit
+gixt gist update <target> prompt.md
+
+# permanently delete a remote gist (prompts; --yes confirms non-interactively)
+gixt gist delete <target>
+# only forget a local registration, without deleting anything on GitHub
+gixt remove <target>
+
 # pin a gist to its current revision so runs are stable
 gixt pin ssh
 gixt pin list
