@@ -129,6 +129,15 @@ gixt run --python .venv/bin/python app.py
 gixt gist show leolaurindo/hello-world
 gixt run --dry-run ssh
 
+# create a secret gist or update its files (requires authentication)
+gixt gist create prompt.md --description "Review prompt" ## --public should be explicit
+gixt gist update <target> prompt.md
+
+# permanently delete a remote gist (prompts; --yes confirms non-interactively)
+gixt gist delete <target>
+# only forget a local registration, without deleting anything on GitHub
+gixt remove <target>
+
 # pin a gist to its current revision so runs are stable
 gixt pin ssh
 gixt pin list
@@ -136,6 +145,20 @@ gixt pin list
 # approve all of your gists at their current commits
 gixt trust mine
 gixt trust list
+```
+
+## Agent skill
+
+The [gixt skill](skills/gixt/SKILL.md) teaches agents how to retrieve gist content and run scripts with gixt. Install the CLI first, then ask your agent:
+
+> Read https://github.com/leolaurindo/gixt/blob/main/skills/gixt/SKILL.md and install it in your skills directory.
+
+Or install manually on the directory your agent discover skills from, such as`~/.agents/skills`:
+
+```sh
+mkdir -p ~/.agents/skills/gixt
+curl -fsSL https://raw.githubusercontent.com/leolaurindo/gixt/main/skills/gixt/SKILL.md \
+  -o ~/.agents/skills/gixt/SKILL.md
 ```
 
 ## Trust model
